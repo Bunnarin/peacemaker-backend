@@ -31,8 +31,9 @@ routerAdd('POST', '/done/{id}', e => {
 })
 
 routerAdd('POST', '/new_member/{nationality}', e => {
+    const nationality = e.request?.pathValue("nationality");
     $app.db().newQuery(`
-        UPDATE counter SET {:nationality} = {:nationality} + 1
-    `).bind({ nationality: e.request?.pathValue("nationality") }).execute();
+        UPDATE counter SET ${nationality} = ${nationality} + 1
+    `).execute();
     e.json(200);
 })

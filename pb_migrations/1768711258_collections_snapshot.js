@@ -677,6 +677,15 @@ migrate((app) => {
           "required": false,
           "system": false,
           "type": "bool"
+        },
+        {
+          "hidden": false,
+          "id": "bool3502295525",
+          "name": "promote",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "bool"
         }
       ],
       "id": "pbc_2106002237",
