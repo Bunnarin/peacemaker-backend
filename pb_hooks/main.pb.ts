@@ -30,10 +30,9 @@ routerAdd('POST', '/done/{id}', e => {
     e.json(200);
 })
 
-routerAdd('POST', '/new_member/{nationality}', e => {
-    const nationality = e.request?.pathValue("nationality");
+routerAdd('POST', '/new_member', e => {
     $app.db().newQuery(`
-        UPDATE counter SET ${nationality} = ${nationality} + 1
+        UPDATE counter SET other = other + 1
     `).execute();
     e.json(200);
 })
