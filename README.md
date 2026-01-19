@@ -1,10 +1,8 @@
 apt update  
 apt upgrade  
 apt install git  
-git clone this repo
-cd peacemaker-backend
-
-# pocketbase
+git clone this repo pb
+cd pb
 wget pocketbase  
 unzip pocketbase.zip  
 rm pocketbase.zip  
@@ -28,6 +26,7 @@ ExecStart        = /root/pb/pocketbase serve backend.peacekhth.uk --origins http
 [Install]
 WantedBy = multi-user.target
 ```
+
 cp pb_hooks/config.example pb_hooks/config.js  
 nano pb_hooks/config.js
 

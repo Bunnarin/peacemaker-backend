@@ -578,7 +578,7 @@ migrate((app) => {
           "hidden": false,
           "id": "text3208210256",
           "max": 15,
-          "min": 15,
+          "min": 13,
           "name": "id",
           "pattern": "^[a-z0-9]+$",
           "presentable": true,
@@ -588,21 +588,26 @@ migrate((app) => {
           "type": "text"
         },
         {
-          "hidden": false,
-          "id": "bool3291445124",
-          "name": "report",
-          "presentable": false,
-          "required": false,
-          "system": false,
-          "type": "bool"
-        },
-        {
           "autogeneratePattern": "",
           "hidden": false,
           "id": "text2490651244",
           "max": 0,
           "min": 0,
-          "name": "comment",
+          "name": "khStatement",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": true,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text1131352930",
+          "max": 0,
+          "min": 0,
+          "name": "thStatement",
           "pattern": "",
           "presentable": false,
           "primaryKey": false,
@@ -651,7 +656,7 @@ migrate((app) => {
           "name": "targetTally",
           "onlyInt": true,
           "presentable": false,
-          "required": false,
+          "required": true,
           "system": false,
           "type": "number"
         },
@@ -686,13 +691,21 @@ migrate((app) => {
           "required": false,
           "system": false,
           "type": "bool"
+        },
+        {
+          "hidden": false,
+          "id": "bool3291445124",
+          "name": "report",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "bool"
         }
       ],
       "id": "pbc_2106002237",
       "indexes": [
         "CREATE UNIQUE INDEX `idx_EN8Sm43JtR` ON `ig` (`url`)",
-        "CREATE UNIQUE INDEX `idx_W83OWnYmPP` ON `post` (`createdOn`)",
-        "CREATE INDEX `idx_GABoHpfn6x` ON `post` (`khmer`)"
+        "CREATE UNIQUE INDEX `idx_W83OWnYmPP` ON `post` (`createdOn`)"
       ],
       "listRule": "approved = true",
       "name": "post",

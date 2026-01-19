@@ -32,6 +32,8 @@ routerAdd('POST', '/done/{id}', e => {
 
 routerAdd('POST', '/new_member/{nationality}', e => {
     const nationality = e.request?.pathValue("nationality");
+    if (nationality != 'khmer' && nationality != 'thai' && nationality != 'other')
+        throw new ApiError(400, "invalid nationality");
     $app.db().newQuery(`
         UPDATE counter SET ${nationality} = ${nationality} + 1
     `).execute();
