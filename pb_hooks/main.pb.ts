@@ -2,9 +2,6 @@
 
 // remove the query params and encode the domain to save space
 onRecordCreate(e => {
-    e.record?.set('createdOn', Date.now());
-    e.record?.set('targetTally', 50);
-
     const url = e.record?.get('url').split('?')[0];
     const domainMap = {
         'https://www.facebook.com': 'fb',
@@ -32,7 +29,7 @@ routerAdd('POST', '/done/{id}', e => {
 
 routerAdd('POST', '/new_member/{nationality}', e => {
     const nationality = e.request?.pathValue("nationality");
-    if (nationality != 'khmer' && nationality != 'thai' && nationality != 'other')
+    if (nationality != 'khmer' && nationality != 'thai' && nationality != 'others')
         throw new ApiError(400, "invalid nationality");
     $app.db().newQuery(`
         UPDATE counter SET ${nationality} = ${nationality} + 1

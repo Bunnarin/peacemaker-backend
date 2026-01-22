@@ -570,7 +570,182 @@ migrate((app) => {
       "viewRule": null
     },
     {
-      "createRule": "approved = false",
+      "authAlert": {
+        "emailTemplate": {
+          "body": "<p>Hello,</p>\n<p>We noticed a login to your {APP_NAME} account from a new location:</p>\n<p><em>{ALERT_INFO}</em></p>\n<p><strong>If this wasn't you, you should immediately change your {APP_NAME} account password to revoke access from all other locations.</strong></p>\n<p>If this was you, you may disregard this email.</p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
+          "subject": "Login from a new location"
+        },
+        "enabled": false
+      },
+      "authRule": "",
+      "authToken": {
+        "duration": 604800
+      },
+      "confirmEmailChangeTemplate": {
+        "body": "<p>Hello,</p>\n<p>Click on the button below to confirm your new email address.</p>\n<p>\n  <a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-email-change/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Confirm new email</a>\n</p>\n<p><i>If you didn't ask to change your email address, you can ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
+        "subject": "Confirm your {APP_NAME} new email address"
+      },
+      "createRule": "reviewer = false",
+      "deleteRule": "id = @request.auth.id",
+      "emailChangeToken": {
+        "duration": 1800
+      },
+      "fields": [
+        {
+          "autogeneratePattern": "[a-z0-9]{15}",
+          "hidden": false,
+          "id": "text3208210256",
+          "max": 15,
+          "min": 15,
+          "name": "id",
+          "pattern": "^[a-z0-9]+$",
+          "presentable": false,
+          "primaryKey": true,
+          "required": true,
+          "system": true,
+          "type": "text"
+        },
+        {
+          "cost": 0,
+          "hidden": true,
+          "id": "password901924565",
+          "max": 0,
+          "min": 8,
+          "name": "password",
+          "pattern": "",
+          "presentable": false,
+          "required": true,
+          "system": true,
+          "type": "password"
+        },
+        {
+          "autogeneratePattern": "[a-zA-Z0-9]{50}",
+          "hidden": true,
+          "id": "text2504183744",
+          "max": 60,
+          "min": 30,
+          "name": "tokenKey",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": true,
+          "system": true,
+          "type": "text"
+        },
+        {
+          "exceptDomains": null,
+          "hidden": false,
+          "id": "email3885137012",
+          "name": "email",
+          "onlyDomains": null,
+          "presentable": false,
+          "required": true,
+          "system": true,
+          "type": "email"
+        },
+        {
+          "hidden": false,
+          "id": "bool1547992806",
+          "name": "emailVisibility",
+          "presentable": false,
+          "required": false,
+          "system": true,
+          "type": "bool"
+        },
+        {
+          "hidden": false,
+          "id": "bool256245529",
+          "name": "verified",
+          "presentable": false,
+          "required": false,
+          "system": true,
+          "type": "bool"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text1579384326",
+          "max": 255,
+          "min": 0,
+          "name": "name",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "hidden": false,
+          "id": "bool3762759472",
+          "name": "reviewer",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "bool"
+        }
+      ],
+      "fileToken": {
+        "duration": 180
+      },
+      "id": "_pb_users_auth_",
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
+        "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''"
+      ],
+      "listRule": "id = @request.auth.id",
+      "manageRule": null,
+      "mfa": {
+        "duration": 1800,
+        "enabled": false,
+        "rule": ""
+      },
+      "name": "users",
+      "oauth2": {
+        "enabled": true,
+        "mappedFields": {
+          "avatarURL": "",
+          "id": "",
+          "name": "name",
+          "username": ""
+        }
+      },
+      "otp": {
+        "duration": 180,
+        "emailTemplate": {
+          "body": "<p>Hello,</p>\n<p>Your one-time password is: <strong>{OTP}</strong></p>\n<p><i>If you didn't ask for the one-time password, you can ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
+          "subject": "OTP for {APP_NAME}"
+        },
+        "enabled": false,
+        "length": 8
+      },
+      "passwordAuth": {
+        "enabled": false,
+        "identityFields": [
+          "email"
+        ]
+      },
+      "passwordResetToken": {
+        "duration": 1800
+      },
+      "resetPasswordTemplate": {
+        "body": "<p>Hello,</p>\n<p>Click on the button below to reset your password.</p>\n<p>\n  <a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-password-reset/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Reset password</a>\n</p>\n<p><i>If you didn't ask to reset your password, you can ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
+        "subject": "Reset your {APP_NAME} password"
+      },
+      "system": false,
+      "type": "auth",
+      "updateRule": null,
+      "verificationTemplate": {
+        "body": "<p>Hello,</p>\n<p>Thank you for joining us at {APP_NAME}.</p>\n<p>Click on the button below to verify your email address.</p>\n<p>\n  <a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-verification/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Verify</a>\n</p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
+        "subject": "Verify your {APP_NAME} email"
+      },
+      "verificationToken": {
+        "duration": 259200
+      },
+      "viewRule": "id = @request.auth.id"
+    },
+    {
+      "createRule": "@request.auth.reviewer = approved",
       "deleteRule": null,
       "fields": [
         {
@@ -593,11 +768,11 @@ migrate((app) => {
           "id": "text2490651244",
           "max": 0,
           "min": 0,
-          "name": "khStatement",
+          "name": "kh_kh",
           "pattern": "",
           "presentable": false,
           "primaryKey": false,
-          "required": true,
+          "required": false,
           "system": false,
           "type": "text"
         },
@@ -607,11 +782,39 @@ migrate((app) => {
           "id": "text1131352930",
           "max": 0,
           "min": 0,
-          "name": "thStatement",
+          "name": "th_kh",
           "pattern": "",
           "presentable": false,
           "primaryKey": false,
-          "required": true,
+          "required": false,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text3112719032",
+          "max": 0,
+          "min": 0,
+          "name": "kh_th",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text1530417899",
+          "max": 0,
+          "min": 0,
+          "name": "th_th",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
           "system": false,
           "type": "text"
         },
@@ -623,18 +826,6 @@ migrate((app) => {
           "required": false,
           "system": false,
           "type": "bool"
-        },
-        {
-          "hidden": false,
-          "id": "number3899609308",
-          "max": null,
-          "min": null,
-          "name": "createdOn",
-          "onlyInt": true,
-          "presentable": false,
-          "required": false,
-          "system": false,
-          "type": "number"
         },
         {
           "hidden": false,
@@ -700,12 +891,45 @@ migrate((app) => {
           "required": false,
           "system": false,
           "type": "bool"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text724990059",
+          "max": 0,
+          "min": 0,
+          "name": "title",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": true,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "hidden": false,
+          "id": "bool1655102503",
+          "name": "priority",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "bool"
+        },
+        {
+          "hidden": false,
+          "id": "autodate2048051762",
+          "name": "updatedOn",
+          "onCreate": true,
+          "onUpdate": true,
+          "presentable": false,
+          "system": false,
+          "type": "autodate"
         }
       ],
       "id": "pbc_2106002237",
       "indexes": [
         "CREATE UNIQUE INDEX `idx_EN8Sm43JtR` ON `ig` (`url`)",
-        "CREATE UNIQUE INDEX `idx_W83OWnYmPP` ON `post` (`createdOn`)"
+        "CREATE INDEX `idx_W83OWnYmPP` ON `post` (`updatedOn`)"
       ],
       "listRule": "approved = true",
       "name": "post",
@@ -838,6 +1062,28 @@ migrate((app) => {
           "required": false,
           "system": false,
           "type": "number"
+        },
+        {
+          "hidden": false,
+          "id": "date964744887",
+          "max": "",
+          "min": "",
+          "name": "memberLastNotified",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "date"
+        },
+        {
+          "hidden": false,
+          "id": "date3698277421",
+          "max": "",
+          "min": "",
+          "name": "reviewerLastNotified",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "date"
         }
       ],
       "id": "pbc_1349643154",
@@ -848,6 +1094,82 @@ migrate((app) => {
       "type": "base",
       "updateRule": null,
       "viewRule": ""
+    },
+    {
+      "createRule": null,
+      "deleteRule": null,
+      "fields": [
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text3208210256",
+          "max": 0,
+          "min": 0,
+          "name": "id",
+          "pattern": "^[a-z0-9_]+$",
+          "presentable": false,
+          "primaryKey": true,
+          "required": true,
+          "system": true,
+          "type": "text"
+        },
+        {
+          "convertURLs": false,
+          "hidden": false,
+          "id": "editor2197635900",
+          "maxSize": 0,
+          "name": "stance",
+          "presentable": false,
+          "required": true,
+          "system": false,
+          "type": "editor"
+        },
+        {
+          "hidden": false,
+          "id": "file3309110367",
+          "maxSelect": 1,
+          "maxSize": 0,
+          "mimeTypes": [
+            "image/jpeg",
+            "image/png"
+          ],
+          "name": "image",
+          "presentable": false,
+          "protected": false,
+          "required": false,
+          "system": false,
+          "thumbs": [],
+          "type": "file"
+        },
+        {
+          "hidden": false,
+          "id": "bool819771692",
+          "name": "khmer",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "bool"
+        },
+        {
+          "hidden": false,
+          "id": "date2862495610",
+          "max": "",
+          "min": "",
+          "name": "date",
+          "presentable": false,
+          "required": true,
+          "system": false,
+          "type": "date"
+        }
+      ],
+      "id": "pbc_3052289650",
+      "indexes": [],
+      "listRule": "",
+      "name": "stance",
+      "system": false,
+      "type": "base",
+      "updateRule": null,
+      "viewRule": null
     }
   ];
 
