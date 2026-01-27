@@ -9,6 +9,8 @@ on:
 
 jobs:
   deploy_production:
+    runs-on: ubuntu-latest
+    
     steps:
       - name: Deploy project over SSH
         uses: appleboy/ssh-action@v1
