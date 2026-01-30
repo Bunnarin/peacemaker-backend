@@ -585,7 +585,7 @@ migrate((app) => {
         "body": "<p>Hello,</p>\n<p>Click on the button below to confirm your new email address.</p>\n<p>\n  <a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-email-change/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Confirm new email</a>\n</p>\n<p><i>If you didn't ask to change your email address, you can ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
         "subject": "Confirm your {APP_NAME} new email address"
       },
-      "createRule": "reviewer = false",
+      "createRule": null,
       "deleteRule": "id = @request.auth.id",
       "emailChangeToken": {
         "duration": 1800
@@ -677,12 +677,13 @@ migrate((app) => {
         },
         {
           "hidden": false,
-          "id": "bool3762759472",
-          "name": "reviewer",
+          "id": "json81427074",
+          "maxSize": 0,
+          "name": "pushSubscription",
           "presentable": false,
           "required": false,
           "system": false,
-          "type": "bool"
+          "type": "json"
         }
       ],
       "fileToken": {
@@ -691,9 +692,10 @@ migrate((app) => {
       "id": "_pb_users_auth_",
       "indexes": [
         "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
-        "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''"
+        "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''",
+        "CREATE INDEX `idx_CQuuvvczQr` ON `users` (`pushSubscription`)"
       ],
-      "listRule": "id = @request.auth.id",
+      "listRule": null,
       "manageRule": null,
       "mfa": {
         "duration": 1800,
@@ -734,7 +736,7 @@ migrate((app) => {
       },
       "system": false,
       "type": "auth",
-      "updateRule": null,
+      "updateRule": "id = @request.auth.id",
       "verificationTemplate": {
         "body": "<p>Hello,</p>\n<p>Thank you for joining us at {APP_NAME}.</p>\n<p>Click on the button below to verify your email address.</p>\n<p>\n  <a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-verification/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Verify</a>\n</p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>",
         "subject": "Verify your {APP_NAME} email"
@@ -891,14 +893,14 @@ migrate((app) => {
       "deleteRule": null,
       "fields": [
         {
-          "autogeneratePattern": "[a-z0-9]{10}",
+          "autogeneratePattern": "",
           "hidden": false,
           "id": "text3208210256",
-          "max": 10,
-          "min": 10,
+          "max": 0,
+          "min": 0,
           "name": "id",
-          "pattern": "^[a-z0-9]+$",
-          "presentable": false,
+          "pattern": "^[a-z0-9_]+$",
+          "presentable": true,
           "primaryKey": true,
           "required": true,
           "system": true,
@@ -944,20 +946,6 @@ migrate((app) => {
           "required": false,
           "system": false,
           "type": "bool"
-        },
-        {
-          "autogeneratePattern": "",
-          "hidden": false,
-          "id": "text724990059",
-          "max": 0,
-          "min": 0,
-          "name": "title",
-          "pattern": "",
-          "presentable": false,
-          "primaryKey": false,
-          "required": true,
-          "system": false,
-          "type": "text"
         }
       ],
       "id": "pbc_1754858045",
@@ -990,72 +978,28 @@ migrate((app) => {
           "type": "text"
         },
         {
+          "autogeneratePattern": "",
           "hidden": false,
-          "id": "number1064737238",
-          "max": null,
+          "id": "text494360628",
+          "max": 0,
           "min": 0,
-          "name": "thai",
-          "onlyInt": true,
+          "name": "value",
+          "pattern": "",
           "presentable": false,
+          "primaryKey": false,
           "required": false,
           "system": false,
-          "type": "number"
-        },
-        {
-          "hidden": false,
-          "id": "number1377350615",
-          "max": null,
-          "min": null,
-          "name": "khmer",
-          "onlyInt": false,
-          "presentable": false,
-          "required": false,
-          "system": false,
-          "type": "number"
-        },
-        {
-          "hidden": false,
-          "id": "number549042166",
-          "max": null,
-          "min": 0,
-          "name": "others",
-          "onlyInt": true,
-          "presentable": false,
-          "required": false,
-          "system": false,
-          "type": "number"
-        },
-        {
-          "hidden": false,
-          "id": "date964744887",
-          "max": "",
-          "min": "",
-          "name": "memberLastNotified",
-          "presentable": false,
-          "required": false,
-          "system": false,
-          "type": "date"
-        },
-        {
-          "hidden": false,
-          "id": "date3698277421",
-          "max": "",
-          "min": "",
-          "name": "reviewerLastNotified",
-          "presentable": false,
-          "required": false,
-          "system": false,
-          "type": "date"
+          "type": "text"
         }
       ],
       "id": "pbc_1349643154",
       "indexes": [],
       "listRule": null,
-      "name": "counter",
+      "name": "KV",
       "system": false,
       "type": "base",
       "updateRule": null,
-      "viewRule": ""
+      "viewRule": null
     },
     {
       "createRule": "approved = false",
@@ -1177,6 +1121,69 @@ migrate((app) => {
       "type": "base",
       "updateRule": null,
       "viewRule": "approved = true"
+    },
+    {
+      "createRule": null,
+      "deleteRule": null,
+      "fields": [
+        {
+          "autogeneratePattern": "[a-z0-9]{15}",
+          "hidden": false,
+          "id": "text3208210256",
+          "max": 15,
+          "min": 15,
+          "name": "id",
+          "pattern": "^[a-z0-9]+$",
+          "presentable": false,
+          "primaryKey": true,
+          "required": true,
+          "system": true,
+          "type": "text"
+        },
+        {
+          "hidden": false,
+          "id": "bool819771692",
+          "name": "khmer",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "bool"
+        },
+        {
+          "hidden": false,
+          "id": "json81427074",
+          "maxSize": 0,
+          "name": "pushSubscription",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "json"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text2783163181",
+          "max": 0,
+          "min": 0,
+          "name": "ip",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
+        }
+      ],
+      "id": "pbc_1743856862",
+      "indexes": [
+        "CREATE INDEX `idx_0FuG8iGVq7` ON `guest` (`pushSubscription`)"
+      ],
+      "listRule": null,
+      "name": "guest",
+      "system": false,
+      "type": "base",
+      "updateRule": null,
+      "viewRule": null
     }
   ];
 

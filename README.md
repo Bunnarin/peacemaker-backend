@@ -33,3 +33,9 @@ nano pb_hooks/config.js
 ./pocketbase superuser create EMAIL PASS  
 systemctl enable pocketbase  
 systemctl start pocketbase
+
+# for node script
+apt install nodejs npm
+npm install
+nano .env
+crontab -e

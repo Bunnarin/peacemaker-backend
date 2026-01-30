@@ -1,2 +1,4 @@
 pocketbase.exe
 pb_data
+.env
+node_modules
