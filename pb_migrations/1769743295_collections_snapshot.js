@@ -745,7 +745,7 @@ migrate((app) => {
       "viewRule": "id = @request.auth.id"
     },
     {
-      "createRule": "@request.auth.reviewer = approved",
+      "createRule": "approved = false",
       "deleteRule": null,
       "fields": [
         {
@@ -760,62 +760,6 @@ migrate((app) => {
           "primaryKey": true,
           "required": true,
           "system": true,
-          "type": "text"
-        },
-        {
-          "autogeneratePattern": "",
-          "hidden": false,
-          "id": "text2490651244",
-          "max": 0,
-          "min": 0,
-          "name": "kh_kh",
-          "pattern": "",
-          "presentable": false,
-          "primaryKey": false,
-          "required": false,
-          "system": false,
-          "type": "text"
-        },
-        {
-          "autogeneratePattern": "",
-          "hidden": false,
-          "id": "text1131352930",
-          "max": 0,
-          "min": 0,
-          "name": "th_kh",
-          "pattern": "",
-          "presentable": false,
-          "primaryKey": false,
-          "required": false,
-          "system": false,
-          "type": "text"
-        },
-        {
-          "autogeneratePattern": "",
-          "hidden": false,
-          "id": "text3112719032",
-          "max": 0,
-          "min": 0,
-          "name": "kh_th",
-          "pattern": "",
-          "presentable": false,
-          "primaryKey": false,
-          "required": false,
-          "system": false,
-          "type": "text"
-        },
-        {
-          "autogeneratePattern": "",
-          "hidden": false,
-          "id": "text1530417899",
-          "max": 0,
-          "min": 0,
-          "name": "th_th",
-          "pattern": "",
-          "presentable": false,
-          "primaryKey": false,
-          "required": false,
-          "system": false,
           "type": "text"
         },
         {
@@ -867,15 +811,6 @@ migrate((app) => {
         },
         {
           "hidden": false,
-          "id": "bool170165877",
-          "name": "khmer",
-          "presentable": false,
-          "required": false,
-          "system": false,
-          "type": "bool"
-        },
-        {
-          "hidden": false,
           "id": "bool3502295525",
           "name": "promote",
           "presentable": false,
@@ -893,20 +828,6 @@ migrate((app) => {
           "type": "bool"
         },
         {
-          "autogeneratePattern": "",
-          "hidden": false,
-          "id": "text724990059",
-          "max": 0,
-          "min": 0,
-          "name": "title",
-          "pattern": "",
-          "presentable": false,
-          "primaryKey": false,
-          "required": true,
-          "system": false,
-          "type": "text"
-        },
-        {
           "hidden": false,
           "id": "bool1655102503",
           "name": "priority",
@@ -914,6 +835,33 @@ migrate((app) => {
           "required": false,
           "system": false,
           "type": "bool"
+        },
+        {
+          "cascadeDelete": true,
+          "collectionId": "pbc_3052289650",
+          "hidden": false,
+          "id": "relation2197635900",
+          "maxSelect": 1,
+          "minSelect": 0,
+          "name": "stance",
+          "presentable": true,
+          "required": false,
+          "system": false,
+          "type": "relation"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text2075844950",
+          "max": 0,
+          "min": 0,
+          "name": "instruction",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
         },
         {
           "hidden": false,
@@ -931,7 +879,7 @@ migrate((app) => {
         "CREATE UNIQUE INDEX `idx_EN8Sm43JtR` ON `ig` (`url`)",
         "CREATE INDEX `idx_W83OWnYmPP` ON `post` (`updatedOn`)"
       ],
-      "listRule": "approved = true",
+      "listRule": "approved = true && stance.approved = true",
       "name": "post",
       "system": false,
       "type": "base",
@@ -957,6 +905,15 @@ migrate((app) => {
           "type": "text"
         },
         {
+          "hidden": false,
+          "id": "bool2086131741",
+          "name": "approved",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "bool"
+        },
+        {
           "autogeneratePattern": "",
           "hidden": false,
           "id": "text4101391790",
@@ -969,15 +926,6 @@ migrate((app) => {
           "required": true,
           "system": false,
           "type": "text"
-        },
-        {
-          "hidden": false,
-          "id": "bool2086131741",
-          "name": "approved",
-          "presentable": false,
-          "required": false,
-          "system": false,
-          "type": "bool"
         },
         {
           "hidden": false,
@@ -996,6 +944,20 @@ migrate((app) => {
           "required": false,
           "system": false,
           "type": "bool"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text724990059",
+          "max": 0,
+          "min": 0,
+          "name": "title",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": true,
+          "system": false,
+          "type": "text"
         }
       ],
       "id": "pbc_1754858045",
@@ -1096,7 +1058,7 @@ migrate((app) => {
       "viewRule": ""
     },
     {
-      "createRule": null,
+      "createRule": "approved = false",
       "deleteRule": null,
       "fields": [
         {
@@ -1114,15 +1076,13 @@ migrate((app) => {
           "type": "text"
         },
         {
-          "convertURLs": false,
           "hidden": false,
-          "id": "editor2197635900",
-          "maxSize": 0,
-          "name": "stance",
+          "id": "bool2086131741",
+          "name": "approved",
           "presentable": false,
-          "required": true,
+          "required": false,
           "system": false,
-          "type": "editor"
+          "type": "bool"
         },
         {
           "hidden": false,
@@ -1143,15 +1103,6 @@ migrate((app) => {
         },
         {
           "hidden": false,
-          "id": "bool819771692",
-          "name": "khmer",
-          "presentable": false,
-          "required": false,
-          "system": false,
-          "type": "bool"
-        },
-        {
-          "hidden": false,
           "id": "date2862495610",
           "max": "",
           "min": "",
@@ -1160,16 +1111,72 @@ migrate((app) => {
           "required": true,
           "system": false,
           "type": "date"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text1959943206",
+          "max": 0,
+          "min": 0,
+          "name": "kh_kh",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text3112719032",
+          "max": 0,
+          "min": 0,
+          "name": "kh_th",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text2523028597",
+          "max": 0,
+          "min": 0,
+          "name": "th_kh",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text1530417899",
+          "max": 0,
+          "min": 0,
+          "name": "th_th",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
         }
       ],
       "id": "pbc_3052289650",
       "indexes": [],
-      "listRule": "",
+      "listRule": "approved = true",
       "name": "stance",
       "system": false,
       "type": "base",
       "updateRule": null,
-      "viewRule": null
+      "viewRule": "approved = true"
     }
   ];
 

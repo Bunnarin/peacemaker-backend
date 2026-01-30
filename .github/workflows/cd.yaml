@@ -18,4 +18,4 @@ jobs:
           host: ${{ secrets.HOST_IP }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: cd atteny-backend && git pull
+          script: cd pb && git pull
