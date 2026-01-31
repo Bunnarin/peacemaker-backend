@@ -1052,7 +1052,7 @@ migrate((app) => {
           "min": "",
           "name": "date",
           "presentable": false,
-          "required": true,
+          "required": false,
           "system": false,
           "type": "date"
         },
@@ -1111,6 +1111,24 @@ migrate((app) => {
           "required": false,
           "system": false,
           "type": "text"
+        },
+        {
+          "hidden": false,
+          "id": "bool819771692",
+          "name": "khmer",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "bool"
+        },
+        {
+          "hidden": false,
+          "id": "bool927789065",
+          "name": "mature",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "bool"
         }
       ],
       "id": "pbc_3052289650",

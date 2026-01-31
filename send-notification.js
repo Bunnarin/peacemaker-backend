@@ -35,11 +35,8 @@ async function broadcast(tableName, payload) {
             const subscription = JSON.parse(record.pushSubscription);
             await webpush.sendNotification(subscription, payloadStr);
         } catch (err) {
-            if (err.statusCode === 404 || err.statusCode === 410) {
+            if (err.statusCode === 404 || err.statusCode === 410)
                 db.prepare(`UPDATE ${tableName} SET pushSubscription = NULL WHERE id = ?`).run(record.id);
-            } else {
-                console.error(`Error sending to ${tableName} ${record.id}:`, err);
-            }
         }
     }
 }
