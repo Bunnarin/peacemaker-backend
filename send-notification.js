@@ -45,7 +45,7 @@ async function notifyReviewers() {
     const lastNotified = getKV('reviewerLastNotified');
     const count = db.prepare('SELECT COUNT(*) as count FROM post WHERE approved = false AND updatedOn > ?').get(lastNotified).count;
 
-    if (count === 0) return;
+    if (count < 5) return;
 
     await broadcast('users', {
         title: 'You have post to review',

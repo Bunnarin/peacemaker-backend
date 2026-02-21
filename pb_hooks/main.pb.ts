@@ -4,6 +4,7 @@
 onRecordCreate(e => {
     const url = e.record?.get('url').split('?')[0];
     const domainMap = {
+        'https://web.facebook.com': 'fb',
         'https://www.facebook.com': 'fb',
         'https://x.com': 'x',
         'https://www.instagram.com': 'ig',
