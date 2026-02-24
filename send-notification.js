@@ -28,12 +28,11 @@ function getKV(id, defaultValue = new Date(0).toISOString()) {
  */
 async function broadcast(tableName, payload) {
     const records = db.prepare(`SELECT id, pushSubscription FROM ${tableName} WHERE pushSubscription IS NOT NULL`).all();
-    const payloadStr = JSON.stringify(payload);
 
     for (const record of records) {
         try {
             const subscription = JSON.parse(record.pushSubscription);
-            await webpush.sendNotification(subscription, payloadStr);
+            await webpush.sendNotification(subscription, JSON.stringify(payload));
         } catch (err) {
             if (err.statusCode === 404 || err.statusCode === 410)
                 db.prepare(`UPDATE ${tableName} SET pushSubscription = NULL WHERE id = ?`).run(record.id);
@@ -65,7 +64,7 @@ async function notifyGuests() {
         await broadcast('guest', {
             title: 'Urgent!',
             body: 'An urgent post needs your immediate attention',
-            url: '/'
+            url: '/?priority=true'
         });
         db.prepare('UPDATE KV SET value = ? WHERE id = ?').run(new Date().toISOString(), 'guestLastNotified');
         return;
