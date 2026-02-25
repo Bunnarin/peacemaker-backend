@@ -1,6 +1,8 @@
 import webpush from 'web-push';
 import Database from 'better-sqlite3';
 import dotenv from 'dotenv';
+import https from 'https';
+
 dotenv.config();
 
 webpush.setVapidDetails(
@@ -10,6 +12,10 @@ webpush.setVapidDetails(
 );
 
 const db = new Database('pb_data/data.db');
+
+notifyReviewers();
+notifyGuests();
+https.get('https://hc-ping.com/f1d7d228-b6da-4602-a1a7-d6c5492bf0c3');
 
 /**
  * Helper to get value from KV table
@@ -81,6 +87,3 @@ async function notifyGuests() {
 
     db.prepare('UPDATE KV SET value = ? WHERE id = ?').run(new Date().toISOString(), 'guestLastNotified');
 }
-
-notifyReviewers();
-notifyGuests();
