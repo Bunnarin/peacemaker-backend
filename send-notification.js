@@ -55,7 +55,7 @@ async function notifyReviewers() {
     await broadcast('users', {
         title: 'You have post to review',
         body: `There are ${count} posts waiting for your review`,
-        url: '/'
+        url: ''
     });
 
     db.prepare('UPDATE KV SET value = ? WHERE id = ?').run(new Date().toISOString(), 'reviewerLastNotified');
@@ -82,7 +82,7 @@ async function notifyGuests() {
     await broadcast('guest', {
         title: 'Daily Peacemaker Update',
         body: `You have ${count} new posts to rectify`,
-        url: '/'
+        url: '/?priority=true'
     });
 
     db.prepare('UPDATE KV SET value = ? WHERE id = ?').run(new Date().toISOString(), 'guestLastNotified');
