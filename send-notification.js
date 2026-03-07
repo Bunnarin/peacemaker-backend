@@ -38,7 +38,7 @@ async function broadcast(tableName, payload) {
     for (const record of records) {
         try {
             const subscription = JSON.parse(record.pushSubscription);
-            await webpush.sendNotification(subscription, JSON.stringify(payload));
+            await webpush.sendNotification(subscription, JSON.stringify(payload), { urgency: 'high' });
         } catch (err) {
             if (err.statusCode === 404 || err.statusCode === 410)
                 db.prepare(`UPDATE ${tableName} SET pushSubscription = NULL WHERE id = ?`).run(record.id);
@@ -50,12 +50,12 @@ async function notifyReviewers() {
     const lastNotified = getKV('reviewerLastNotified');
     const count = db.prepare('SELECT COUNT(*) as count FROM post WHERE approved = false AND updatedOn > ?').get(lastNotified).count;
 
-    if (count < 5) return;
+    if (count == 0) return;
 
     await broadcast('users', {
         title: 'You have post to review',
         body: `There are ${count} posts waiting for your review`,
-        url: ''
+        url: '/reviews?priority=true'
     });
 
     db.prepare('UPDATE KV SET value = ? WHERE id = ?').run(new Date().toISOString(), 'reviewerLastNotified');
@@ -80,7 +80,7 @@ async function notifyGuests() {
     if (count < 10) return;
 
     await broadcast('guest', {
-        title: 'Daily Peacemaker Update',
+        title: 'New posts',
         body: `You have ${count} new posts to rectify`,
         url: '/?priority=true'
     });

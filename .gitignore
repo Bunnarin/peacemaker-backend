@@ -1,4 +1,5 @@
 pocketbase.exe
 pb_data
+pb_hooks/config.js
 .env
 node_modules

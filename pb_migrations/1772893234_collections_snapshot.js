@@ -684,6 +684,55 @@ migrate((app) => {
           "required": false,
           "system": false,
           "type": "json"
+        },
+        {
+          "hidden": false,
+          "id": "file376926767",
+          "maxSelect": 1,
+          "maxSize": 0,
+          "mimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/svg+xml",
+            "image/gif",
+            "image/webp"
+          ],
+          "name": "avatar",
+          "presentable": false,
+          "protected": false,
+          "required": false,
+          "system": false,
+          "thumbs": null,
+          "type": "file"
+        },
+        {
+          "hidden": false,
+          "id": "bool3762759472",
+          "name": "reviewer",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "bool"
+        },
+        {
+          "hidden": false,
+          "id": "autodate2990389176",
+          "name": "created",
+          "onCreate": true,
+          "onUpdate": false,
+          "presentable": false,
+          "system": false,
+          "type": "autodate"
+        },
+        {
+          "hidden": false,
+          "id": "autodate3332085495",
+          "name": "updated",
+          "onCreate": true,
+          "onUpdate": true,
+          "presentable": false,
+          "system": false,
+          "type": "autodate"
         }
       ],
       "fileToken": {
@@ -747,8 +796,8 @@ migrate((app) => {
       "viewRule": "id = @request.auth.id"
     },
     {
-      "createRule": "approved = false",
-      "deleteRule": null,
+      "createRule": "approved = @request.auth.reviewer",
+      "deleteRule": "@request.auth.reviewer = true",
       "fields": [
         {
           "autogeneratePattern": "[a-z0-9]{15}",
@@ -793,7 +842,7 @@ migrate((app) => {
           "name": "targetTally",
           "onlyInt": true,
           "presentable": false,
-          "required": true,
+          "required": false,
           "system": false,
           "type": "number"
         },
@@ -857,13 +906,29 @@ migrate((app) => {
           "id": "text2075844950",
           "max": 0,
           "min": 0,
-          "name": "instruction",
+          "name": "content",
           "pattern": "",
           "presentable": false,
           "primaryKey": false,
           "required": false,
           "system": false,
           "type": "text"
+        },
+        {
+          "hidden": false,
+          "id": "select1784266478",
+          "maxSelect": 4,
+          "name": "needs",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "select",
+          "values": [
+            "kh_kh",
+            "kh_th",
+            "th_kh",
+            "th_th"
+          ]
         },
         {
           "hidden": false,
@@ -881,12 +946,12 @@ migrate((app) => {
         "CREATE UNIQUE INDEX `idx_EN8Sm43JtR` ON `ig` (`url`)",
         "CREATE INDEX `idx_W83OWnYmPP` ON `post` (`updatedOn`)"
       ],
-      "listRule": "approved = true && stance.approved = true",
+      "listRule": "(approved = @request.auth.reviewer) || approved = false",
       "name": "post",
       "system": false,
       "type": "base",
-      "updateRule": null,
-      "viewRule": null
+      "updateRule": "@request.auth.reviewer = true",
+      "viewRule": ""
     },
     {
       "createRule": "approved = false",
@@ -946,6 +1011,20 @@ migrate((app) => {
           "required": false,
           "system": false,
           "type": "bool"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text1697279903",
+          "max": 0,
+          "min": 0,
+          "name": "rss",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
         }
       ],
       "id": "pbc_1754858045",
@@ -970,7 +1049,7 @@ migrate((app) => {
           "max": 0,
           "min": 0,
           "name": "id",
-          "pattern": "^[a-z0-9]+$",
+          "pattern": "^[a-zA-Z0-9_]+$",
           "presentable": false,
           "primaryKey": true,
           "required": true,
@@ -1002,8 +1081,8 @@ migrate((app) => {
       "viewRule": null
     },
     {
-      "createRule": "approved = false",
-      "deleteRule": null,
+      "createRule": "approved = @request.auth.reviewer",
+      "deleteRule": "@request.auth.reviewer = true",
       "fields": [
         {
           "autogeneratePattern": "",
@@ -1129,16 +1208,72 @@ migrate((app) => {
           "required": false,
           "system": false,
           "type": "bool"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text2200387651",
+          "max": 280,
+          "min": 0,
+          "name": "kh_kh_x",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text2338129802",
+          "max": 280,
+          "min": 0,
+          "name": "kh_th_x",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text313633892",
+          "max": 280,
+          "min": 0,
+          "name": "th_kh_x",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text449571757",
+          "max": 280,
+          "min": 0,
+          "name": "th_th_x",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
         }
       ],
       "id": "pbc_3052289650",
       "indexes": [],
-      "listRule": "approved = true",
+      "listRule": "",
       "name": "stance",
       "system": false,
       "type": "base",
-      "updateRule": null,
-      "viewRule": "approved = true"
+      "updateRule": "@request.auth.reviewer = true",
+      "viewRule": ""
     },
     {
       "createRule": null,

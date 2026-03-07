@@ -2,6 +2,9 @@
 
 // remove the query params and encode the domain to save space
 onRecordCreate(e => {
+    if (!e.record?.get('targetTally'))
+        e.record?.set('targetTally', 10);
+
     const url = e.record?.get('url').split('?')[0];
     const domainMap = {
         'https://web.facebook.com': 'fb',
@@ -19,7 +22,7 @@ onRecordCreate(e => {
             return e.next();
         }
     throw new ApiError(400, "invalid url");
-}, 'post', 'source')
+}, 'post', 'source', 'dead_post')
 
 routerAdd('POST', '/done/{id}', e => {
     $app.db().newQuery(`
