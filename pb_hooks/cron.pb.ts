@@ -1,7 +1,7 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-// since this cron is UTC and we want PP time 6-21, we +7
-cronAdd('fetchPosts', '0 4-13 * * *', () => {
+// since this cron is UTC and we want PP time 7-22, so we - 7
+cronAdd('fetchPosts', '0 0-15 * * *', () => {
     const config = require(`${__hooks}/config.js`);
     const getPrompt = (posts) => `You are a classifier for social media posts. Your job is to determine if each post relates to the Cambodia-Thailand hatred and rivalry.
     This hatred includes not just border conflicts, but also culture wars, historical claims, toxic nationalism, rivalry, or rude remarks over each other's tragedies and differences.
@@ -59,7 +59,11 @@ cronAdd('fetchPosts', '0 4-13 * * *', () => {
                 },
             }),
         });
-        if (statusCode !== 200) throw new ApiError(statusCode, 'LLM API error: ' + JSON.stringify(geminiResp));
+        if (statusCode !== 200) {
+            // signal a fail
+            $http.send({ url: 'https://hc-ping.com/5bc42c3a-c6da-4e0c-8f1a-a5b9cdf072b7/fail' });
+            throw new ApiError(statusCode, 'LLM API error: ' + JSON.stringify(geminiResp));
+        }
         const llmResult = JSON.parse(geminiResp.candidates[0].content.parts[0].text).filter(e => e.is_related);
 
         // Loop through the results and save to db
