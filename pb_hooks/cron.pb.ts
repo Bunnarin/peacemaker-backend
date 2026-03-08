@@ -1,7 +1,7 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-// bcuz we host in singapore and it's 1h ahead of us
-cronAdd('fetchPosts', '0 7-22 * * *', () => {
+// since this cron is UTC and we want PP time 6-21, we +7
+cronAdd('fetchPosts', '0 4-13 * * *', () => {
     const config = require(`${__hooks}/config.js`);
     const getPrompt = (posts) => `You are a classifier for social media posts. Your job is to determine if each post relates to the Cambodia-Thailand hatred and rivalry.
     This hatred includes not just border conflicts, but also culture wars, historical claims, toxic nationalism, rivalry, or rude remarks over each other's tragedies and differences.
@@ -17,11 +17,18 @@ cronAdd('fetchPosts', '0 7-22 * * *', () => {
     const postCollection = $app.findCollectionByNameOrId("post");
     const postLastReviewedRecord = $app.findRecordById('KV', 'postLastReviewed');
     const postLastReviewed = new Date(postLastReviewedRecord.get('value') || 0);
+    let latestPostDate = postLastReviewed;
 
     sources.forEach(source => {
         const { json: { items } } = $http.send({ url: source.get('rss') });
         const posts = items.filter(item => new Date(item.date_published) > postLastReviewed);
         if (posts.length === 0) return;
+
+        posts.forEach((p: any) => {
+            const d = new Date(p.date_published);
+            if (d > latestPostDate)
+                latestPostDate = d;
+        });
 
         // Strip posts down to just the text to save tokens, but keep URL to map back
         const postsPayload = JSON.stringify(posts.map(p => ({ url: p.url, text: p.content_text })));
@@ -71,8 +78,10 @@ cronAdd('fetchPosts', '0 7-22 * * *', () => {
         });
     });
 
-    postLastReviewedRecord.set('value', new Date().toISOString());
-    $app.save(postLastReviewedRecord);
+    if (latestPostDate > postLastReviewed) {
+        postLastReviewedRecord.set('value', latestPostDate.toISOString());
+        $app.save(postLastReviewedRecord);
+    }
 
     // healthcheck
     $http.send({ url: 'https://hc-ping.com/5bc42c3a-c6da-4e0c-8f1a-a5b9cdf072b7' });
