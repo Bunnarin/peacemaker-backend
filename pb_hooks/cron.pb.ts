@@ -1,7 +1,9 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-// since this cron is UTC and we want PP time 7-22, so we - 7
-cronAdd('fetchPosts', '0 0-15 * * *', () => {
+// since this cron is UTC and we want PP time 7-23, so we - 7
+// cron remove cuz on prod there's no cron job for some reason
+cronRemove('fetchPosts');
+cronAdd('fetchPosts', '0 0-16 * * *', () => {
     const config = require(`${__hooks}/config.js`);
     const getPrompt = (posts) => `You are a classifier for social media posts. Your job is to determine if each post relates to the Cambodia-Thailand hatred and rivalry.
     This hatred includes not just border conflicts, but also culture wars, historical claims, toxic nationalism, rivalry, or rude remarks over each other's tragedies and differences.
@@ -24,7 +26,7 @@ cronAdd('fetchPosts', '0 0-15 * * *', () => {
         const posts = items.filter(item => new Date(item.date_published) > postLastReviewed);
         if (posts.length === 0) return;
 
-        posts.forEach((p: any) => {
+        posts.forEach(p => {
             const d = new Date(p.date_published);
             if (d > latestPostDate)
                 latestPostDate = d;
