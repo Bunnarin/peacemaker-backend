@@ -1,9 +1,10 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-// since this cron is UTC and we want PP time 7-23, so we - 7
+// wip cron to remove old failed posts
+
+// since this cron is UTC and we want PP time 7-22, so we - 7
 // cron remove cuz on prod there's no cron job for some reason
-cronRemove('fetchPosts');
-cronAdd('fetchRSS', '0 0-16 * * *', () => {
+cronAdd('fetchRSS', '0 0-15 * * *', () => {
     const config = require(`${__hooks}/config.js`);
     const getPrompt = (posts) => `You are a classifier for social media posts. Your job is to determine if each post relates to the Cambodia-Thailand hatred and rivalry.
     This hatred includes not just border conflicts, but also culture wars, historical claims, toxic nationalism, rivalry, or rude remarks over each other's tragedies and differences.
@@ -22,8 +23,8 @@ cronAdd('fetchRSS', '0 0-16 * * *', () => {
     let latestPostDate = postLastReviewed;
 
     sources.forEach(source => {
-        const rss = 'https://rss.app/feeds/v1.1/' + source.get('rss') + '.json';
-        const { json: { items } } = $http.send({ url: rss });
+        const fullRSS = 'https://rss.app/feeds/v1.1/' + source?.get('rss') + '.json';
+        const { json: { items } } = $http.send({ url: fullRSS });
         const posts = items.filter(item => new Date(item.date_published) > postLastReviewed);
         if (posts.length === 0) return;
 
@@ -85,10 +86,8 @@ cronAdd('fetchRSS', '0 0-16 * * *', () => {
         });
     });
 
-    if (latestPostDate > postLastReviewed) {
-        postLastReviewedRecord.set('value', latestPostDate.toISOString());
-        $app.save(postLastReviewedRecord);
-    }
+    postLastReviewedRecord.set('value', latestPostDate.toISOString());
+    $app.save(postLastReviewedRecord);
 
     // healthcheck
     $http.send({ url: 'https://hc-ping.com/5bc42c3a-c6da-4e0c-8f1a-a5b9cdf072b7' });
