@@ -5,7 +5,7 @@ onRecordCreate(e => {
     if (!e.record?.get('targetTally'))
         e.record?.set('targetTally', 10);
 
-    const url = e.record?.get('url').split('?')[0];
+    const url = e.record?.get('url');
     const domainMap = {
         'https://web.facebook.com': 'fb',
         'https://www.facebook.com': 'fb',
@@ -22,25 +22,22 @@ onRecordCreate(e => {
             return e.next();
         }
     throw new ApiError(400, "invalid url");
-}, 'post', 'source', 'dead_post')
+}, 'post', 'source')
 
-routerAdd('POST', '/done/{id}', e => {
-    $app.db().newQuery(`
-        UPDATE post SET currentTally = currentTally + 1 WHERE id = {:id}
-    `).bind({ id: e.request?.pathValue("id") }).execute();
-    e.json(200);
-})
-
-routerAdd('POST', '/new_guest', e => {
-    const { pushSubscription, khmer } = e.requestInfo().body;
-    $app.db().newQuery(`
-        INSERT INTO guest (pushSubscription, ip, khmer) 
-        VALUES ({:pushSubscription}, '${e.realIP()}', {:khmer})
-    `).bind({ khmer, pushSubscription: JSON.stringify(pushSubscription) }).execute();
-    e.json(200);
-})
-
-routerAdd('GET', '/member_count', e => {
-    const count = $app.countRecords("guest");
-    e.json(200, { count });
-})
+onRecordsListRequest(e => {
+    const domainMap = {
+        'fb': 'https://www.facebook.com',
+        'x': 'https://x.com',
+        'ig': 'https://www.instagram.com',
+        'tt': 'https://www.tiktok.com',
+        'yt': 'https://youtu.be',
+        'ytt': 'https://www.youtube.com',
+    }
+    e.records.forEach(record => {
+        const url = record.get('url');
+        for (const [prefix, encoded] of Object.entries(domainMap))
+            if (url.startsWith(prefix))
+                return record.set('url', url.replace(prefix, encoded));
+    })
+    e.next();
+}, 'post', 'source')

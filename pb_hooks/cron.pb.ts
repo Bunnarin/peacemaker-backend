@@ -3,7 +3,7 @@
 // since this cron is UTC and we want PP time 7-23, so we - 7
 // cron remove cuz on prod there's no cron job for some reason
 cronRemove('fetchPosts');
-cronAdd('fetchPosts', '0 0-16 * * *', () => {
+cronAdd('fetchRSS', '0 0-16 * * *', () => {
     const config = require(`${__hooks}/config.js`);
     const getPrompt = (posts) => `You are a classifier for social media posts. Your job is to determine if each post relates to the Cambodia-Thailand hatred and rivalry.
     This hatred includes not just border conflicts, but also culture wars, historical claims, toxic nationalism, rivalry, or rude remarks over each other's tragedies and differences.
@@ -22,7 +22,8 @@ cronAdd('fetchPosts', '0 0-16 * * *', () => {
     let latestPostDate = postLastReviewed;
 
     sources.forEach(source => {
-        const { json: { items } } = $http.send({ url: source.get('rss') });
+        const rss = 'https://rss.app/feeds/v1.1/' + source.get('rss') + '.json';
+        const { json: { items } } = $http.send({ url: rss });
         const posts = items.filter(item => new Date(item.date_published) > postLastReviewed);
         if (posts.length === 0) return;
 
