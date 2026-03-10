@@ -78,6 +78,7 @@ cronAdd('fetchRSS', '0 0-15 * * *', () => {
             const postRecord = new Record(postCollection);
             postRecord.set('url', post.url);
             postRecord.set('content', post.content_text);
+            postRecord.set('source', source?.id);
             try {
                 $app.save(postRecord);
             } catch {
