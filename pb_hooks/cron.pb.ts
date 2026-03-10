@@ -1,7 +1,5 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-// wip cron to remove old failed posts
-
 // since this cron is UTC and we want PP time 7-22, so we - 7
 // cron remove cuz on prod there's no cron job for some reason
 cronAdd('fetchRSS', '0 0-15 * * *', () => {
@@ -65,7 +63,7 @@ cronAdd('fetchRSS', '0 0-15 * * *', () => {
         });
         if (statusCode !== 200) {
             // signal a fail
-            $http.send({ url: 'https://hc-ping.com/5bc42c3a-c6da-4e0c-8f1a-a5b9cdf072b7/fail' });
+            $http.send({ url: config.HEALTH_CHECK_URL + '/fail' });
             throw new ApiError(statusCode, 'LLM API error: ' + JSON.stringify(geminiResp));
         }
         const llmResult = JSON.parse(geminiResp.candidates[0].content.parts[0].text).filter(e => e.is_related);
@@ -78,6 +76,7 @@ cronAdd('fetchRSS', '0 0-15 * * *', () => {
             const postRecord = new Record(postCollection);
             postRecord.set('url', post.url);
             postRecord.set('content', post.content_text);
+            postRecord.set('thumbnail', post.image);
             postRecord.set('source', source?.id);
             try {
                 $app.save(postRecord);
@@ -91,5 +90,14 @@ cronAdd('fetchRSS', '0 0-15 * * *', () => {
     $app.save(postLastReviewedRecord);
 
     // healthcheck
-    $http.send({ url: 'https://hc-ping.com/5bc42c3a-c6da-4e0c-8f1a-a5b9cdf072b7' });
+    $http.send({ url: config.HEALTH_CHECK_URL });
 });
+
+cronAdd('cleanupOldPosts', '@daily', () => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    $app.db().newQuery(`
+        DELETE FROM post 
+        WHERE "updatedOn" < '${thirtyDaysAgo.toISOString()}' AND "currentTally" < "targetTally";
+    `).execute();
+})
