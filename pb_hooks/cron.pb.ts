@@ -1,40 +1,11 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-// since this cron is UTC and we want PP time 7-22, so we - 7
+// since this cron is UTC and we want PP time 7-21, so we - 7
 // cron remove cuz on prod there's no cron job for some reason
-cronAdd('fetchRSS', '0 0-15 * * *', () => {
+cronAdd('fetchRSS', '0 0-14 * * *', () => {
     const config = require(`${__hooks}/config.js`);
-    const getPrompt = (posts) => `You are a classifier for social media posts. Your job is to determine if each post relates to the Cambodia-Thailand hatred and rivalry.
-    This hatred includes not just border conflicts, but also culture wars, historical claims, toxic nationalism, rivalry, or rude remarks over each other's tragedies and differences.
-    Posts to classify (JSON array):
-    ${posts}
 
-    Rules:
-    - Evaluate EACH post in the list.
-    - We strongly prefer FALSE POSITIVES over false negatives. If there is even a subtle hint, a mild reference, or an indirect connection to the Cambodia-Thailand rivalry, historical claims, or culture war, return true.
-    - Return false ONLY if the post is completely unrelated to anything between Cambodia and Thailand (e.g., general Southeast Asia politics, clearly unrelated news).`;
-    const sources = $app.findAllRecords("source", $dbx.exp("rss != ''"));
-
-    const postCollection = $app.findCollectionByNameOrId("post");
-    const postLastReviewedRecord = $app.findRecordById('KV', 'postLastReviewed');
-    const postLastReviewed = new Date(postLastReviewedRecord.get('value') || 0);
-    let latestPostDate = postLastReviewed;
-
-    sources.forEach(source => {
-        const fullRSS = 'https://rss.app/feeds/v1.1/' + source?.get('rss') + '.json';
-        const { json: { items } } = $http.send({ url: fullRSS });
-        const posts = items.filter(item => new Date(item.date_published) > postLastReviewed);
-        if (posts.length === 0) return;
-
-        posts.forEach(p => {
-            const d = new Date(p.date_published);
-            if (d > latestPostDate)
-                latestPostDate = d;
-        });
-
-        // Strip posts down to just the text to save tokens, but keep URL to map back
-        const postsPayload = JSON.stringify(posts.map(p => ({ url: p.url, text: p.content_text })));
-
+    const classifyPosts = (prompt) => {
         const { json: geminiResp, statusCode } = $http.send({
             url: `https://generativelanguage.googleapis.com/v1beta/models/${config.MODEL}:generateContent?key=${config.LLM_API_KEY}`,
             method: 'POST',
@@ -42,7 +13,7 @@ cronAdd('fetchRSS', '0 0-15 * * *', () => {
             body: JSON.stringify({
                 contents: [{
                     parts: [{
-                        text: getPrompt(postsPayload)
+                        text: prompt
                     }]
                 }],
                 generationConfig: {
@@ -66,18 +37,82 @@ cronAdd('fetchRSS', '0 0-15 * * *', () => {
             $http.send({ url: config.HEALTH_CHECK_URL + '/fail' });
             throw new ApiError(statusCode, 'LLM API error: ' + JSON.stringify(geminiResp));
         }
-        const llmResult = JSON.parse(geminiResp.candidates[0].content.parts[0].text).filter(e => e.is_related);
+        return JSON.parse(geminiResp.candidates[0].content.parts[0].text).filter(e => e.is_related);
+    }
 
-        // Loop through the results and save to db
+    const getStancePrompt = (problemDesc) => `
+        You are a strict classifier for the Cambodia-Thailand conflict.
+
+        Your ONLY job is to identify posts that are COMPLETELY UNRELATED to this specific stance:
+
+        "${problemDesc}"
+
+        Posts to classify (JSON array):
+        ${JSON.stringify(posts.map(p => ({ url: p.url, text: p.title })))}
+
+        Rules (follow strictly):
+        - Evaluate EACH post independently.
+        - Default answer is false (is_related: false).
+        - Return is_related: true ONLY if the post is 100% clearly and explicitly about the exact stance described above. 
+        - If there is even the slightest ambiguity, indirect reference, or it could be about something else, return false.
+        - We strongly prefer false negatives. It is better to miss a post than to incorrectly mark one as related.
+        - Ignore any broader connection to the Cambodia-Thailand conflict. Focus only on whether it matches this exact stance.
+        `;
+
+    const getGeneralPrompt = () => `You are a classifier for social media posts. Your job is to determine if each post relates to the Cambodia-Thailand hatred and rivalry.
+        This hatred includes not just border conflicts, but also culture wars, historical claims, toxic nationalism, rivalry, or rude remarks over each other's tragedies and differences.
+        Posts to classify (JSON array):
+        ${JSON.stringify(posts.map(p => ({ url: p.url, text: p.title })))}
+
+        Rules:
+        - Evaluate EACH post in the list.
+        - We strongly prefer FALSE POSITIVES over false negatives. If there is even a subtle hint, a mild reference, or an indirect connection to the Cambodia-Thailand rivalry, historical claims, or culture war, return true.
+        - Return false ONLY if the post is completely unrelated to anything between Cambodia and Thailand (e.g., general Southeast Asia politics, clearly unrelated news).
+        `;
+
+    const postLastReviewedRecord = $app.findRecordById('KV', 'postLastReviewed');
+    let latestDate = new Date(postLastReviewedRecord.get('value') || 0);
+
+    // ok lets aggregate
+    let posts = [];
+    const sources = $app.findAllRecords("source", $dbx.exp("rss != ''"));
+    sources.forEach(source => {
+        const fullRSS = 'https://rss.app/feeds/v1.1/' + source?.get('rss') + '.json';
+        const { json: { items } } = $http.send({ url: fullRSS });
+        posts.push(...items.map(item => {
+            item.sourceId = source?.id;
+            return item;
+        }));
+    });
+    posts = posts.filter(post => new Date(post.date_published) > latestDate);
+    if (posts.length === 0) return;
+    // make sure we don't go over the token limit
+    posts.sort((a, b) => new Date(a.date_published) - new Date(b.date_published));
+    posts.splice(0, config.MAX_POST_PER_PROMPT);
+    latestDate = posts.reduce((maxDate, currentPost) => {
+        const currentDate = new Date(currentPost.date_published);
+        return currentDate > maxDate ? currentDate : maxDate;
+    }, new Date(posts[0].date_published)); // Initialize with the first post's date
+
+    // filter away all the obvious stance
+    const postCollection = $app.findCollectionByNameOrId("post");
+    const obviousStances = $app.findAllRecords("stance", $dbx.hashExp({ obvious: true }), $dbx.exp("description != ''"));
+    obviousStances.forEach(stance => {
+        const llmResult = classifyPosts(getStancePrompt(stance?.get('description')));
         llmResult.forEach(e => {
             // make sure that the url is real
             const post = posts.find(p => p.url === e.post_url);
             if (!post) return;
+            // rm it for the next filter
+            posts = posts.filter(p => p.url !== post.url);
+
             const postRecord = new Record(postCollection);
             postRecord.set('url', post.url);
             postRecord.set('content', post.content_text);
             postRecord.set('thumbnail', post.image);
-            postRecord.set('source', source?.id);
+            postRecord.set('source', post.sourceId);
+            postRecord.set('stance', stance?.id);
+            postRecord.set('approved', true);
             try {
                 $app.save(postRecord);
             } catch {
@@ -86,7 +121,27 @@ cronAdd('fetchRSS', '0 0-15 * * *', () => {
         });
     });
 
-    postLastReviewedRecord.set('value', latestPostDate.toISOString());
+    // final filter: is it even related the slightest bit to the hatred
+    const llmResult = classifyPosts(getGeneralPrompt());
+
+    // Loop through the results and save to db
+    llmResult.forEach(e => {
+        // make sure that the url is real
+        const post = posts.find(p => p.url === e.post_url);
+        if (!post) return;
+        const postRecord = new Record(postCollection);
+        postRecord.set('url', post.url);
+        postRecord.set('content', post.content_text);
+        postRecord.set('thumbnail', post.image);
+        postRecord.set('source', post.sourceId);
+        try {
+            $app.save(postRecord);
+        } catch {
+            // could be that the post already exists
+        }
+    });
+
+    postLastReviewedRecord.set('value', latestDate.toISOString());
     $app.save(postLastReviewedRecord);
 
     // healthcheck
@@ -100,4 +155,4 @@ cronAdd('cleanupOldPosts', '@daily', () => {
         DELETE FROM post 
         WHERE "updatedOn" < '${thirtyDaysAgo.toISOString()}' AND "currentTally" < "targetTally";
     `).execute();
-})
+});
