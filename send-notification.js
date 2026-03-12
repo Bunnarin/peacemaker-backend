@@ -33,7 +33,7 @@ function getKV(id, defaultValue = new Date(0).toISOString()) {
  * Sends a push notification to all users/guests in a table who have a subscription
  */
 async function broadcast(tableName, payload) {
-    const records = db.prepare(`SELECT id, pushSubscription FROM ${tableName} WHERE pushSubscription IS NOT NULL`).all();
+    const records = db.prepare(`SELECT id, "pushSubscription" FROM ${tableName} WHERE "pushSubscription" IS NOT NULL`).all();
 
     for (const record of records) {
         try {
@@ -41,14 +41,14 @@ async function broadcast(tableName, payload) {
             await webpush.sendNotification(subscription, JSON.stringify(payload), { urgency: 'high' });
         } catch (err) {
             if (err.statusCode === 404 || err.statusCode === 410)
-                db.prepare(`UPDATE ${tableName} SET pushSubscription = NULL WHERE id = ?`).run(record.id);
+                db.prepare(`UPDATE ${tableName} SET "pushSubscription" = NULL WHERE id = ?`).run(record.id);
         }
     }
 }
 
 async function notifyReviewers() {
     const lastNotified = getKV('reviewerLastNotified');
-    const count = db.prepare('SELECT COUNT(*) as count FROM post WHERE approved = false AND updatedOn > ?').get(lastNotified).count;
+    const count = db.prepare('SELECT COUNT(*) as count FROM post WHERE approved = false AND "updatedOn" > ?').get(lastNotified).count;
 
     if (count == 0) return;
 
@@ -65,7 +65,7 @@ async function notifyGuests() {
     const lastNotified = getKV('guestLastNotified');
 
     // first check for number of urgent post
-    const urgentCount = db.prepare('SELECT COUNT(*) as count FROM post WHERE approved = TRUE AND priority = TRUE AND updatedOn > ?').get(lastNotified).count;
+    const urgentCount = db.prepare('SELECT COUNT(*) as count FROM post WHERE approved = TRUE AND priority = TRUE AND "updatedOn" > ?').get(lastNotified).count;
     if (urgentCount > 0) {
         await broadcast('guest', {
             title: 'Urgent!',
@@ -76,7 +76,7 @@ async function notifyGuests() {
         return;
     }
 
-    const count = db.prepare('SELECT COUNT(*) as count FROM post WHERE approved = TRUE AND updatedOn > ?').get(lastNotified).count;
+    const count = db.prepare('SELECT COUNT(*) as count FROM post WHERE approved = TRUE AND "updatedOn" > ?').get(lastNotified).count;
     if (count < 10) return;
 
     await broadcast('guest', {

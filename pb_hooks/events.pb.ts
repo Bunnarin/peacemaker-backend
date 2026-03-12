@@ -5,14 +5,14 @@ onRecordCreate(e => {
     if (!e.record?.get('targetTally'))
         e.record?.set('targetTally', 10);
 
-    if (!e.record?.get('needs')) {
+    if (e.record?.get('needs').length == 0) {
         // inject meaningful needs
         let needs = ['kh_kh', 'kh_th', 'th_th', 'th_kh'];
-        $app.expandRecord(e.record, ['stance', 'source'], null)
+        $app.expandRecord(e.record, ['stance', 'source'], null);
         // filter by stance if it only contain the message
         if (e.record?.get('stance')) {
             const stance = e.record.expandedOne('stance');
-            needs = needs.filter(need => !!stance[need]);
+            needs = needs.filter(need => !!stance.get(need));
         }
         // filter by source's audience
         if (e.record?.get('source')) {
@@ -20,7 +20,7 @@ onRecordCreate(e => {
             needs = needs.filter(need => {
                 const recepient = need.split('_')[1];
                 return source.get('audiences').includes(recepient);
-            })
+            });
         }
 
         // we should also filter by the source's origin? like if it's a thai posting immaturtiy, then we obviosuly prioritise the condemnation onto thai? but if the thai post tragedy, we apologize on bhealf of cambodia instead
