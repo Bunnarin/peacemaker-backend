@@ -50,7 +50,28 @@ onRecordCreate(e => {
             break;
         }
     e.next();
-}, 'post', 'source')
+}, 'post')
+
+onRecordCreate(e => {
+    // encode the url
+    const domainMap = {
+        'https://web.facebook.com/': 'fb',
+        'https://www.facebook.com/': 'fb',
+        'https://x.com/': 'x',
+        'https://www.instagram.com/': 'ig',
+        'https://www.tiktok.com/': 'tt',
+        'https://youtu.be/': 'yt',
+        'https://www.youtube.com/': 'ytt',
+    }
+    const url = e.record?.get('url');
+    for (const [prefix, encoded] of Object.entries(domainMap))
+        if (url.startsWith(prefix)) {
+            e.record?.set('domain', encoded);
+            e.record?.set('url', url.replace(prefix, ''))
+            break;
+        }
+    e.next();
+}, 'source')
 
 // decode the domain when list request
 onRecordsListRequest(e => {
