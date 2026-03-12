@@ -5,6 +5,8 @@
 cronAdd('fetchRSS', '0 0-14 * * *', () => {
     const config = require(`${__hooks}/config.js`);
 
+    let posts = [];
+
     const classifyPosts = (prompt) => {
         const { json: geminiResp, statusCode } = $http.send({
             url: `https://generativelanguage.googleapis.com/v1beta/models/${config.MODEL}:generateContent?key=${config.LLM_API_KEY}`,
@@ -32,11 +34,8 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
                 },
             }),
         });
-        if (statusCode !== 200) {
-            // signal a fail
-            $http.send({ url: config.HEALTH_CHECK_URL + '/fail' });
+        if (statusCode !== 200)
             throw new ApiError(statusCode, 'LLM API error: ' + JSON.stringify(geminiResp));
-        }
         return JSON.parse(geminiResp.candidates[0].content.parts[0].text).filter(e => e.is_related);
     }
 
@@ -69,83 +68,93 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         - We strongly prefer FALSE POSITIVES over false negatives. If there is even a subtle hint, a mild reference, or an indirect connection to the Cambodia-Thailand rivalry, historical claims, or culture war, return true.
         - Return false ONLY if the post is completely unrelated to anything between Cambodia and Thailand (e.g., general Southeast Asia politics, clearly unrelated news).
         `;
+    try {
+        const postLastReviewedRecord = $app.findRecordById('KV', 'postLastReviewed');
+        let latestDate = new Date(postLastReviewedRecord.get('value') || 0);
 
-    const postLastReviewedRecord = $app.findRecordById('KV', 'postLastReviewed');
-    let latestDate = new Date(postLastReviewedRecord.get('value') || 0);
+        // ok lets aggregate
+        const sources = $app.findAllRecords("source", $dbx.exp("rss != ''"));
+        sources.forEach(source => {
+            const fullRSS = 'https://rss.app/feeds/v1.1/' + source?.get('rss') + '.json';
+            const { statusCode, json } = $http.send({ url: fullRSS });
+            if (statusCode !== 200)
+                throw new ApiError(statusCode, `rss err (${source?.get('rss')}):` + JSON.stringify(json));
+            posts.push(...json.items.map(item => {
+                item.sourceId = source?.id;
+                return item;
+            }));
+        });
+        posts = posts.filter(post => new Date(post.date_published) > latestDate);
+        if (posts.length === 0) return;
+        // make sure we don't go over the token limit
+        posts.sort((a, b) => {
+            const aDate = new Date(a.date_published);
+            const bDate = new Date(b.date_published);
+            return aDate - bDate;
+        });
+        posts = posts.slice(0, config.MAX_POST_PER_PROMPT);
+        latestDate = posts.reduce((maxDate, currentPost) => {
+            const currentDate = new Date(currentPost.date_published);
+            return currentDate > maxDate ? currentDate : maxDate;
+        }, new Date(posts[0].date_published)); // Initialize with the first post's date
 
-    // ok lets aggregate
-    let posts = [];
-    const sources = $app.findAllRecords("source", $dbx.exp("rss != ''"));
-    sources.forEach(source => {
-        const fullRSS = 'https://rss.app/feeds/v1.1/' + source?.get('rss') + '.json';
-        const { json: { items } } = $http.send({ url: fullRSS });
-        posts.push(...items.map(item => {
-            item.sourceId = source?.id;
-            return item;
-        }));
-    });
-    posts = posts.filter(post => new Date(post.date_published) > latestDate);
-    if (posts.length === 0) return;
-    // make sure we don't go over the token limit
-    posts.sort((a, b) => new Date(a.date_published) - new Date(b.date_published));
-    posts.splice(0, config.MAX_POST_PER_PROMPT);
-    latestDate = posts.reduce((maxDate, currentPost) => {
-        const currentDate = new Date(currentPost.date_published);
-        return currentDate > maxDate ? currentDate : maxDate;
-    }, new Date(posts[0].date_published)); // Initialize with the first post's date
+        // filter away all the obvious stance
+        const postCollection = $app.findCollectionByNameOrId("post");
+        const obviousStances = $app.findAllRecords("stance", $dbx.hashExp({ obvious: true }), $dbx.exp("description != ''"));
+        obviousStances.forEach(stance => {
+            const llmResult = classifyPosts(getStancePrompt(stance?.get('description')));
+            llmResult.forEach(e => {
+                // make sure that the url is real
+                const post = posts.find(p => p.url === e.post_url);
+                if (!post) return;
+                // rm it for the next filter
+                posts = posts.filter(p => p.url !== post.url);
 
-    // filter away all the obvious stance
-    const postCollection = $app.findCollectionByNameOrId("post");
-    const obviousStances = $app.findAllRecords("stance", $dbx.hashExp({ obvious: true }), $dbx.exp("description != ''"));
-    obviousStances.forEach(stance => {
-        const llmResult = classifyPosts(getStancePrompt(stance?.get('description')));
+                const postRecord = new Record(postCollection);
+                postRecord.set('url', post.url);
+                postRecord.set('content', post.content_text);
+                postRecord.set('thumbnail', post.image);
+                postRecord.set('source', post.sourceId);
+                postRecord.set('stance', stance?.id);
+                postRecord.set('approved', true);
+                try {
+                    $app.save(postRecord);
+                } catch {
+                    // could be that the post already exists
+                }
+            });
+        });
+
+        // final filter: is it even related the slightest bit to the hatred
+        const llmResult = classifyPosts(getGeneralPrompt());
+
+        // Loop through the results and save to db
         llmResult.forEach(e => {
             // make sure that the url is real
             const post = posts.find(p => p.url === e.post_url);
             if (!post) return;
-            // rm it for the next filter
-            posts = posts.filter(p => p.url !== post.url);
-
             const postRecord = new Record(postCollection);
             postRecord.set('url', post.url);
             postRecord.set('content', post.content_text);
             postRecord.set('thumbnail', post.image);
             postRecord.set('source', post.sourceId);
-            postRecord.set('stance', stance?.id);
-            postRecord.set('approved', true);
             try {
                 $app.save(postRecord);
             } catch {
                 // could be that the post already exists
             }
         });
-    });
 
-    // final filter: is it even related the slightest bit to the hatred
-    const llmResult = classifyPosts(getGeneralPrompt());
+        postLastReviewedRecord.set('value', latestDate.toISOString());
+        $app.save(postLastReviewedRecord);
 
-    // Loop through the results and save to db
-    llmResult.forEach(e => {
-        // make sure that the url is real
-        const post = posts.find(p => p.url === e.post_url);
-        if (!post) return;
-        const postRecord = new Record(postCollection);
-        postRecord.set('url', post.url);
-        postRecord.set('content', post.content_text);
-        postRecord.set('thumbnail', post.image);
-        postRecord.set('source', post.sourceId);
-        try {
-            $app.save(postRecord);
-        } catch {
-            // could be that the post already exists
-        }
-    });
-
-    postLastReviewedRecord.set('value', latestDate.toISOString());
-    $app.save(postLastReviewedRecord);
-
-    // healthcheck
-    $http.send({ url: config.HEALTH_CHECK_URL });
+        // healthcheck
+        $http.send({ url: config.HEALTH_CHECK_URL });
+    } catch (e) {
+        // signal a fail
+        $http.send({ url: config.HEALTH_CHECK_URL + '/fail' });
+        throw new ApiError(400, e.message);
+    }
 });
 
 cronAdd('cleanupOldPosts', '@daily', () => {

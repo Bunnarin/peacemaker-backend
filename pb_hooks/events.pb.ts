@@ -23,6 +23,9 @@ onRecordCreate(e => {
             })
         }
 
+        // we should also filter by the source's origin? like if it's a thai posting immaturtiy, then we obviosuly prioritise the condemnation onto thai? but if the thai post tragedy, we apologize on bhealf of cambodia instead
+        // let's just do pure elimination. nah we can't say for sure if the post is immature or not. immature means to be blamed. so we need a boolean that says whose fault it is/ nah some stance are neutral. fk it who cares if I sound wierd
+
         e.record?.set('needs', needs);
     }
 
