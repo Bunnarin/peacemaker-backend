@@ -108,6 +108,7 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
                 posts = posts.filter(p => p.url !== post.url);
 
                 const postRecord = new Record(postCollection);
+                postRecord.set('publishedOn', post.date_published);
                 postRecord.set('url', post.url);
                 postRecord.set('content', post.content_text);
                 postRecord.set('thumbnail', post.image);
@@ -131,6 +132,7 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
             const post = posts.find(p => p.url === e.post_url);
             if (!post) return;
             const postRecord = new Record(postCollection);
+            postRecord.set('publishedOn', post.date_published);
             postRecord.set('url', post.url);
             postRecord.set('content', post.content_text);
             postRecord.set('thumbnail', post.image);
@@ -159,6 +161,6 @@ cronAdd('cleanupOldPosts', '@daily', () => {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     $app.db().newQuery(`
         DELETE FROM post 
-        WHERE "updatedOn" < '${thirtyDaysAgo.toISOString()}' AND "currentTally" < "targetTally";
+        WHERE "publishedOn" < '${thirtyDaysAgo.toISOString()}' AND "currentTally" < "targetTally";
     `).execute();
 });

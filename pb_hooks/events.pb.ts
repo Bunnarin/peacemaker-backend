@@ -2,6 +2,9 @@
 
 // encode the domain to save space
 onRecordCreate(e => {
+    if (!e.record?.get('publishedOn'))
+        e.record?.set('publishedOn', new Date().toISOString());
+
     if (!e.record?.get('targetTally'))
         e.record?.set('targetTally', 10);
 
