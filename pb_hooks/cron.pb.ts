@@ -75,18 +75,20 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         // ok lets aggregate
         const sources = $app.findAllRecords("source", $dbx.exp("rss != ''"));
         sources.forEach(source => {
-            const fullRSS = 'https://rss.app/feeds/v1.1/' + source?.get('rss') + '.json';
-            const { statusCode, json } = $http.send({ url: fullRSS });
+            let rss = source?.get('rss');
+            if (!rss.startsWith('https')) // or else it's from rss.app
+                rss = 'https://fetchrss.com/feed/' + rss + '.json';
+            const { statusCode, json } = $http.send({ url: rss });
             if (statusCode !== 200)
-                throw new ApiError(statusCode, `rss err (${source?.get('rss')}):` + JSON.stringify(json));
+                throw new ApiError(statusCode, `rss err (${rss}):` + JSON.stringify(json));
             posts.push(...json.items.map(item => {
                 item.sourceId = source?.id;
                 return item;
             }));
         });
         posts = posts.filter(post => new Date(post.date_published) > latestDate);
+        // dont want to waste tokens
         if (posts.length === 0) return;
-        // make sure we don't go over the token limit
         // earliest first
         posts.sort((a, b) => new Date(a.date_published) - new Date(b.date_published));
         posts = posts.slice(0, config.MAX_POST_PER_PROMPT);
@@ -99,6 +101,7 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         const postCollection = $app.findCollectionByNameOrId("post");
         const obviousStances = $app.findAllRecords("stance", $dbx.hashExp({ obvious: true }), $dbx.exp("description != ''"));
         obviousStances.forEach(stance => {
+            if (posts.length == 0) return;
             const llmResult = classifyPosts(getStancePrompt(stance?.get('description')));
             llmResult.forEach(e => {
                 // make sure that the url is real
