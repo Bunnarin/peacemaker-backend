@@ -78,6 +78,8 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
             let rss = source?.get('rss');
             if (!rss.startsWith('https')) // or else it's from rss.app
                 rss = 'https://fetchrss.com/feed/' + rss + '.json';
+            if (source?.get('domain') == 'tt')
+                rss = 'https://bunnarin.github.io/tiktok-rss-flat/rss/' + rss + '.json';
             const { statusCode, json } = $http.send({ url: rss });
             if (statusCode !== 200)
                 throw new ApiError(statusCode, `rss err (${rss}):` + JSON.stringify(json));
