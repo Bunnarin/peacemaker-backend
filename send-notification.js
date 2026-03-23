@@ -15,6 +15,7 @@ const db = new Database('pb_data/data.db');
 
 notifyReviewers();
 notifyGuests();
+notifyProgress();
 https.get('https://hc-ping.com/f1d7d228-b6da-4602-a1a7-d6c5492bf0c3');
 
 /**
@@ -86,4 +87,22 @@ async function notifyGuests() {
     });
 
     db.prepare('UPDATE KV SET value = ? WHERE id = ?').run(new Date().toISOString(), 'guestLastNotified');
+}
+
+async function notifyProgress() {
+    const res = await fetch('https://graph.facebook.com/v25.0/peacemakerkhth?fields=followers_count&access_token=' + process.env.FB_ACCESS_TOKEN);
+    const data = await res.json();
+    const count = data.followers_count;
+    const lastCount = getKV('lastFBFollowerCount');
+    if (count <= lastCount) return;
+    db.prepare("UPDATE KV SET value = ? WHERE id = 'lastFBFollowerCount'").run(count);
+    const exponent = Math.floor(Math.log10(count)) + 1;
+    const target = Math.pow(10, exponent);
+    const progress = Math.round((count / target) * 100);
+
+    await broadcast('users', {
+        title: 'you gained ' + (count - lastCount) + ' followers',
+        body: `We're at ${progress}% of our goal! Keep it up!`,
+        url: `/?last_fb_count=${lastCount}&current_fb_count=${count}`
+    });
 }
