@@ -83,19 +83,23 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
                 throw new ApiError(statusCode, `rss err (${rss}):` + JSON.stringify(json));
             posts.push(...json.items.map(item => {
                 item.sourceId = source?.id;
+                // ensure fetchrss compatiability with rss.app
+                if (item['media:content']) item.image = item['media:content'];
+                if (item.pubDate) item.date_published = item.pubDate;
+                if (item.link) item.url = item.link;
                 return item;
             }));
         });
-        posts = posts.filter(post => new Date(post.date_published || post.pubDate) > latestDate);
+        posts = posts.filter(post => new Date(post.date_published) > latestDate);
         // dont want to waste tokens
         if (posts.length === 0) return;
         // earliest first
-        posts.sort((a, b) => new Date(a.date_published || a.pubDate) - new Date(b.date_published || b.pubDate));
+        posts.sort((a, b) => new Date(a.date_published) - new Date(b.date_published));
         posts = posts.slice(0, config.MAX_POST_PER_PROMPT);
         latestDate = posts.reduce((maxDate, currentPost) => {
-            const currentDate = new Date(currentPost.date_published || currentPost.pubDate);
+            const currentDate = new Date(currentPost.date_published);
             return currentDate > maxDate ? currentDate : maxDate;
-        }, new Date(posts[0].date_published || posts[0].pubDate)); // Initialize with the first post's date
+        }, new Date(posts[0].date_published)); // Initialize with the first post's date
 
         // filter away all the obvious stance
         const postCollection = $app.findCollectionByNameOrId("post");
@@ -111,10 +115,10 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
                 posts = posts.filter(p => p.url !== post.url);
 
                 const postRecord = new Record(postCollection);
-                postRecord.set('publishedOn', post.date_published || post.pubDate);
+                postRecord.set('publishedOn', post.date_published);
                 postRecord.set('url', post.url);
                 postRecord.set('content', post.content_text);
-                postRecord.set('thumbnail', post.image || post['media:content']);
+                postRecord.set('thumbnail', post.image);
                 postRecord.set('source', post.sourceId);
                 postRecord.set('stance', stance?.id);
                 postRecord.set('approved', true);
@@ -135,10 +139,10 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
             const post = posts.find(p => p.url === e.post_url);
             if (!post) return;
             const postRecord = new Record(postCollection);
-            postRecord.set('publishedOn', post.date_published || post.pubDate);
+            postRecord.set('publishedOn', post.date_published);
             postRecord.set('url', post.url);
             postRecord.set('content', post.content_text);
-            postRecord.set('thumbnail', post.image || post['media:content']);
+            postRecord.set('thumbnail', post.image);
             postRecord.set('source', post.sourceId);
             try {
                 $app.save(postRecord);
