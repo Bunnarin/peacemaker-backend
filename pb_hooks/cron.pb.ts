@@ -84,6 +84,7 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
             posts.push(...json.items.map(item => {
                 item.sourceId = source?.id;
                 // ensure fetchrss compatiability with rss.app
+                if (item.title) item.content_text = item.title;
                 if (item['media:content']) item.image = item['media:content'];
                 if (item.pubDate) item.date_published = item.pubDate;
                 if (item.link) item.url = item.link;
