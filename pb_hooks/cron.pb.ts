@@ -97,6 +97,8 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         // earliest first
         posts.sort((a, b) => new Date(a.date_published) - new Date(b.date_published));
         posts = posts.slice(0, config.MAX_POST_PER_PROMPT);
+        // don't waste LLM if post count too low
+        if (posts.length < config.MAX_POST_PER_PROMPT / 2) return;
         latestDate = posts.reduce((maxDate, currentPost) => {
             const currentDate = new Date(currentPost.date_published);
             return currentDate > maxDate ? currentDate : maxDate;
