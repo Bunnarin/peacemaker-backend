@@ -3,9 +3,6 @@
 	"dependencies": {
 		"better-sqlite3": "^12.6.2",
 		"dotenv": "^17.2.3",
-		"puppeteer": "^24.40.0",
-		"puppeteer-extra": "^3.3.6",
-		"puppeteer-extra-plugin-stealth": "^2.11.2",
 		"web-push": "^3.6.7"
 	}
 }
