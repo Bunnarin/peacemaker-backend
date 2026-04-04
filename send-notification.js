@@ -2,8 +2,12 @@ import webpush from 'web-push';
 import Database from 'better-sqlite3';
 import dotenv from 'dotenv';
 import https from 'https';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 
 dotenv.config();
+
+puppeteer.use(StealthPlugin());
 
 webpush.setVapidDetails(
     'mailto:khmerthaipeace@gmail.com',
@@ -90,10 +94,30 @@ async function notifyGuests() {
 }
 
 async function notifyProgress() {
-    if (!process.env.FB_ACCESS_TOKEN) return;
-    const res = await fetch('https://graph.facebook.com/v25.0/peacemakerkhth?fields=followers_count&access_token=' + process.env.FB_ACCESS_TOKEN);
-    const data = await res.json();
-    const count = data.followers_count;
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+
+    // This will bypass Cloudflare using stealth and give us the raw Next.js page data
+    await page.goto('https://socialblade.com/youtube/channel/UCYBI0brJdDpbYbcnQtKkPOQ', {
+        waitUntil: 'domcontentloaded'
+    });
+
+    const nextData = await page.evaluate(() => {
+        const el = document.getElementById('__NEXT_DATA__');
+        return el ? JSON.parse(el.textContent) : null;
+    });
+
+    await browser.close();
+
+    const queries = nextData.props.pageProps.trpcState.json.queries;
+    // Find the query that holds the "facebook user" data
+    const fbQuery = queries.find(q =>
+        q.queryKey && q.queryKey[0] &&
+        q.queryKey[0][0] === 'facebook' &&
+        q.queryKey[0][1] === 'user'
+    );
+
+    const count = fbQuery.state.data.likes;
     const lastCount = getKV('lastFBFollowerCount');
     if (count <= lastCount) return;
     db.prepare("UPDATE KV SET value = ? WHERE id = 'lastFBFollowerCount'").run(count);
