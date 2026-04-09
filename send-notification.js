@@ -102,7 +102,7 @@ async function notifyProgress() {
     const progress = Math.round((count / target) * 100);
 
     await broadcast('users', {
-        title: 'you gained ' + (count - lastCount) + ' followers',
+        title: (count - lastCount) + ' followers gained!',
         body: `We're at ${progress}% of our goal! Keep it up!`,
         url: `/?last_fb_count=${lastCount}&current_fb_count=${count}`
     });

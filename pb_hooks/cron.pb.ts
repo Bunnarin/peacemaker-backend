@@ -8,35 +8,30 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
     let posts = [];
 
     const classifyPosts = (prompt) => {
-        const { json: geminiResp, statusCode } = $http.send({
-            url: `https://generativelanguage.googleapis.com/v1beta/models/${config.MODEL}:generateContent?key=${config.LLM_API_KEY}`,
+        const { json, statusCode } = $http.send({
+            url: "https://integrate.api.nvidia.com/v1/chat/completions",
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                "Authorization": "Bearer " + config.LLM_API_KEY,
+                "Accept": "application/json"
+            },
             body: JSON.stringify({
-                contents: [{
-                    parts: [{
-                        text: prompt
-                    }]
-                }],
-                generationConfig: {
-                    response_mime_type: 'application/json',
-                    response_schema: {
-                        type: 'ARRAY',
-                        items: {
-                            type: 'OBJECT',
-                            properties: {
-                                post_url: { type: 'STRING' },
-                                is_related: { type: 'BOOLEAN' },
-                            },
-                            required: ['post_url', 'is_related'],
-                        }
+                model: config.MODEL,
+                messages: [{ role: "user", content: prompt }],
+                response_format: {
+                    type: "json_object",
+                    properties: {
+                        url: { "type": "STRING" },
+                        is_related: { "type": "BOOLEAN" },
                     },
-                },
+                    required: ["url", "is_related"]
+                }
             }),
         });
         if (statusCode !== 200)
-            throw new ApiError(statusCode, 'LLM API error: ' + JSON.stringify(geminiResp));
-        return JSON.parse(geminiResp.candidates[0].content.parts[0].text).filter(e => e.is_related);
+            throw new ApiError(statusCode, 'LLM API error: ' + JSON.stringify(json));
+        // had to do this object.values cuz the llm might return different key
+        return Object.values(JSON.parse(json.choices[0].message.content))[0].filter(e => e.is_related);
     }
 
     const getStancePrompt = (problemDesc) => `
@@ -52,7 +47,7 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         Rules (follow strictly):
         - Evaluate EACH post independently.
         - Default answer is false (is_related: false).
-        - Return is_related: true ONLY if the post is 100% clearly and explicitly about the exact stance described above. 
+        - Return the url and is_related: true ONLY if the post is 100% clearly and explicitly about the exact stance described above. 
         - If there is even the slightest ambiguity, indirect reference, or it could be about something else, return false.
         - We strongly prefer false negatives. It is better to miss a post than to incorrectly mark one as related.
         - Ignore any broader connection to the Cambodia-Thailand conflict. Focus only on whether it matches this exact stance.
@@ -77,23 +72,19 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         sources.forEach(source => {
             let rss = source?.get('rss');
             if (!rss.startsWith('https')) // or else it's from rss.app
-                rss = 'https://fetchrss.com/feed/' + rss + '.json';
+                rss = 'https://rss.app/feed/v1.1/' + rss + '.json';
             const { statusCode, json } = $http.send({ url: rss });
             if (statusCode !== 200)
                 throw new ApiError(statusCode, `rss err (${rss}):` + JSON.stringify(json));
             posts.push(...json.items.map(item => {
                 item.sourceId = source?.id;
-                // ensure fetchrss compatiability with rss.app
-                if (item.title) item.content_text = item.title;
-                if (item['media:content']) item.image = item['media:content'];
-                if (item.pubDate) item.date_published = item.pubDate;
-                if (item.link) item.url = item.link;
                 return item;
             }));
         });
         posts = posts.filter(post => new Date(post.date_published) > latestDate);
         // dont want to waste tokens
         if (posts.length === 0) return;
+
         // earliest first
         posts.sort((a, b) => new Date(a.date_published) - new Date(b.date_published));
         posts = posts.slice(0, config.MAX_POST_PER_PROMPT);
@@ -112,7 +103,7 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
             const llmResult = classifyPosts(getStancePrompt(stance?.get('description')));
             llmResult.forEach(e => {
                 // make sure that the url is real
-                const post = posts.find(p => p.url === e.post_url);
+                const post = posts.find(p => p.url === e.url);
                 if (!post) return;
                 // rm it for the next filter
                 posts = posts.filter(p => p.url !== post.url);
@@ -139,7 +130,7 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         // Loop through the results and save to db
         llmResult.forEach(e => {
             // make sure that the url is real
-            const post = posts.find(p => p.url === e.post_url);
+            const post = posts.find(p => p.url === e.url);
             if (!post) return;
             const postRecord = new Record(postCollection);
             postRecord.set('publishedOn', post.date_published);
