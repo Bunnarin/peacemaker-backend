@@ -9,6 +9,8 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
 
     const classifyPosts = (prompt) => {
         const { json, statusCode } = $http.send({
+            // 2mn may be too short
+            timeout: 300,
             url: "https://integrate.api.nvidia.com/v1/chat/completions",
             method: 'POST',
             headers: {
