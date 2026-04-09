@@ -72,7 +72,7 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         sources.forEach(source => {
             let rss = source?.get('rss');
             if (!rss.startsWith('https')) // or else it's from rss.app
-                rss = 'https://rss.app/feed/v1.1/' + rss + '.json';
+                rss = 'https://rss.app/feeds/v1.1/' + rss + '.json';
             const { statusCode, json } = $http.send({ url: rss });
             if (statusCode !== 200)
                 throw new ApiError(statusCode, `rss err (${rss}):` + JSON.stringify(json));
