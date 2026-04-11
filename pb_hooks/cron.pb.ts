@@ -24,15 +24,13 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
             Respond ONLY with valid JSON matching the required schema. No explanation, no markdown.
             Rules:
             - Evaluate EACH post in the list.
-            - We strongly prefer FALSE POSITIVES over false negatives. If there is even a subtle hint, a mild reference, or an indirect connection to the Cambodia-Thailand rivalry, historical claims, or culture war, return true.
-            - Return false ONLY if the post is completely unrelated to anything between Cambodia and Thailand (e.g., general Southeast Asia politics, clearly unrelated news).`
+            - We strongly prefer FALSE NEGATIVES over false positives.`
             :
             `Your job is to determine if each post relates to the Cambodia-Thailand hatred and rivalry.
             This hatred includes not just border conflicts, but also culture wars, historical claims, toxic nationalism, rivalry, or rude remarks over each other's tragedies and differences.
             Rules:
             - Evaluate EACH post in the list.
             - We strongly prefer FALSE POSITIVES over false negatives. If there is even a subtle hint, a mild reference, or an indirect connection to the Cambodia-Thailand rivalry, historical claims, or culture war, return true.
-            - Return false ONLY if the post is completely unrelated to anything between Cambodia and Thailand (e.g., general Southeast Asia politics, clearly unrelated news).
             `
         while (modelIndex < models.length) {
             const { json, statusCode } = $http.send({
