@@ -5,23 +5,10 @@
 cronAdd('fetchRSS', '0 0-14 * * *', () => {
     const config = require(`${__hooks}/config.js`);
 
-    const models = [
-        'google/gemma-3n-e4b-it',
-        'google/gemma-3n-e2b-it',
-        'google/gemma-3-27b-it',
-        'google/gemma-2-2b-it',
-        'google/gemma-2-2b-it',
-        'google/gemma-2-2b-it'
-    ];
-    // we try the next model if the other one don't work
-    let modelIndex = 0;
-
-    let posts = [];
-
+    // helpers
     const classifyPosts = (problemDesc = null) => {
         const systemPrompt = problemDesc ?
             `Your job is to identify posts that are COMPLETELY RELATED to this "${problemDesc}".
-            Respond ONLY with valid JSON matching the required schema. No explanation, no markdown.
             Rules:
             - Evaluate EACH post in the list.
             - We strongly prefer FALSE NEGATIVES over false positives.`
@@ -30,8 +17,7 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
             This hatred includes not just border conflicts, but also culture wars, historical claims, toxic nationalism, rivalry, or rude remarks over each other's tragedies and differences.
             Rules:
             - Evaluate EACH post in the list.
-            - We strongly prefer FALSE POSITIVES over false negatives. If there is even a subtle hint, a mild reference, or an indirect connection to the Cambodia-Thailand rivalry, historical claims, or culture war, return true.
-            `
+            - We strongly prefer FALSE POSITIVES over false negatives.`
         while (modelIndex < models.length) {
             const { json, statusCode } = $http.send({
                 // 2mn may be too short
@@ -91,6 +77,22 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
 
         throw new ApiError(400, 'All LLM models exhausted or failed.');
     }
+
+    const models = [
+        'google/gemma-3n-e4b-it',
+        'google/gemma-3n-e2b-it',
+        'google/gemma-3-27b-it',
+        'google/gemma-2-2b-it',
+        'google/gemma-2-2b-it',
+        'google/gemma-2-2b-it'
+    ];
+
+
+    // we try the next model if the other one don't work
+    let modelIndex = 0;
+
+    let posts = [];
+
     try {
         const postLastReviewedRecord = $app.findRecordById('KV', 'postLastReviewed');
         let latestDate = new Date(postLastReviewedRecord.get('value') || 0);
@@ -104,6 +106,7 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
             const { statusCode, json } = $http.send({ url: rss });
             if (statusCode !== 200)
                 throw new ApiError(statusCode, `rss err (${rss}):` + JSON.stringify(json));
+            // inject source
             posts.push(...json.items.map(item => {
                 item.sourceId = source?.id;
                 return item;
@@ -123,13 +126,17 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
             return currentDate > maxDate ? currentDate : maxDate;
         }, new Date(posts[0].date_published)); // Initialize with the first post's date
 
+        // first filter: is it even related the slightest bit to the hatred
+        const relatedPosts = classifyPosts();
+        posts = posts.filter(p => relatedPosts.some(e => p.url === e.url));
+
         // filter away all the obvious stance
         const postCollection = $app.findCollectionByNameOrId("post");
         const stances = $app.findAllRecords("stance", $dbx.hashExp({ obvious: true }), $dbx.exp("description != ''"));
         stances.forEach(stance => {
             if (posts.length == 0) return;
-            const llmResult = classifyPosts(stance?.get('description'));
-            llmResult.forEach(e => {
+            const relatedPosts = classifyPosts(stance?.get('description'));
+            relatedPosts.forEach(e => {
                 // make sure that the url is real
                 const post = posts.find(p => p.url === e.url);
                 if (!post) return;
@@ -151,14 +158,8 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
             });
         });
 
-        // final filter: is it even related the slightest bit to the hatred
-        const llmResult = classifyPosts();
-
-        // Loop through the results and save to db
-        llmResult.forEach(e => {
-            // make sure that the url is real
-            const post = posts.find(p => p.url === e.url);
-            if (!post) return;
+        // the remaining post that didn't get any stance, we create empty stuff for review
+        posts.forEach(post => {
             const postRecord = new Record(postCollection);
             postRecord.set('publishedOn', post.date_published);
             postRecord.set('url', post.url);
