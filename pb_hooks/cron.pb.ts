@@ -78,6 +78,22 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         throw new ApiError(400, 'All LLM models exhausted or failed.');
     }
 
+    const postCollection = $app.findCollectionByNameOrId("post");
+    const createPostRecord = (post, stanceId = null) => {
+        const postRecord = new Record(postCollection);
+        postRecord.set('publishedOn', post.date_published);
+        postRecord.set('url', post.url);
+        postRecord.set('content', post.content_text);
+        postRecord.set('thumbnail', post.image);
+        postRecord.set('source', post.sourceId);
+        if (stanceId) postRecord.set('stance', stanceId);
+        try {
+            $app.save(postRecord);
+        } catch {
+            // could be that the post already exists
+        }
+    }
+
     const models = [
         'google/gemma-3n-e4b-it',
         'google/gemma-3n-e2b-it',
@@ -86,8 +102,6 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         'google/gemma-2-2b-it',
         'google/gemma-2-2b-it'
     ];
-
-
     // we try the next model if the other one don't work
     let modelIndex = 0;
 
@@ -113,11 +127,19 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
             }));
         });
         posts = posts.filter(post => new Date(post.date_published) > latestDate);
-        // dont want to waste tokens
         if (posts.length === 0) return;
 
-        // earliest first
         posts.sort((a, b) => new Date(a.date_published) - new Date(b.date_published));
+
+        // first filter: keywords
+        const keywordStances = $app.findAllRecords("stance", $dbx.exp("keywords != ''"));
+        keywordStances.forEach(stance => {
+            const keywords = stance.get('keywords').split(', ');
+            const relatedPosts = posts.filter(post => keywords.some(keyword => post.content_text.toLowerCase().includes(keyword.toLowerCase())));
+            relatedPosts.forEach(post => createPostRecord(post, stance?.get('id')));
+            posts = posts.filter(post => !relatedPosts.some(e => post.url === e.url));
+        });
+
         posts = posts.slice(0, config.MAX_POST_PER_PROMPT);
         // don't waste LLM if post count too low
         if (posts.length < config.MAX_POST_PER_PROMPT / 2) return;
@@ -126,52 +148,25 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
             return currentDate > maxDate ? currentDate : maxDate;
         }, new Date(posts[0].date_published)); // Initialize with the first post's date
 
-        // first filter: is it even related the slightest bit to the hatred
+        // 2nd filter: is it even related the slightest bit to the hatred
         const relatedPosts = classifyPosts();
         posts = posts.filter(p => relatedPosts.some(e => p.url === e.url));
 
         // filter away all the obvious stance
-        const postCollection = $app.findCollectionByNameOrId("post");
-        const stances = $app.findAllRecords("stance", $dbx.hashExp({ obvious: true }), $dbx.exp("description != ''"));
-        stances.forEach(stance => {
+        const obviousStances = $app.findAllRecords("stance", $dbx.hashExp({ obvious: true }), $dbx.exp("description != ''"));
+        obviousStances.forEach(stance => {
             if (posts.length == 0) return;
             const relatedPosts = classifyPosts(stance?.get('description'));
             relatedPosts.forEach(e => {
-                // make sure that the url is real
                 const post = posts.find(p => p.url === e.url);
                 if (!post) return;
-                // rm it for the next filter
                 posts = posts.filter(p => p.url !== post.url);
-
-                const postRecord = new Record(postCollection);
-                postRecord.set('publishedOn', post.date_published);
-                postRecord.set('url', post.url);
-                postRecord.set('content', post.content_text);
-                postRecord.set('thumbnail', post.image);
-                postRecord.set('source', post.sourceId);
-                postRecord.set('stance', stance?.id);
-                try {
-                    $app.save(postRecord);
-                } catch {
-                    // could be that the post already exists
-                }
+                createPostRecord(post, stance?.get('id'));
             });
         });
 
         // the remaining post that didn't get any stance, we create empty stuff for review
-        posts.forEach(post => {
-            const postRecord = new Record(postCollection);
-            postRecord.set('publishedOn', post.date_published);
-            postRecord.set('url', post.url);
-            postRecord.set('content', post.content_text);
-            postRecord.set('thumbnail', post.image);
-            postRecord.set('source', post.sourceId);
-            try {
-                $app.save(postRecord);
-            } catch {
-                // could be that the post already exists
-            }
-        });
+        posts.forEach(post => createPostRecord(post));
 
         postLastReviewedRecord.set('value', latestDate.toISOString());
         $app.save(postLastReviewedRecord);
