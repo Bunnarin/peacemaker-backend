@@ -143,7 +143,6 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
                 postRecord.set('thumbnail', post.image);
                 postRecord.set('source', post.sourceId);
                 postRecord.set('stance', stance?.id);
-                postRecord.set('approved', true);
                 try {
                     $app.save(postRecord);
                 } catch {
