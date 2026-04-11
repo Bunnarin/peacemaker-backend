@@ -153,7 +153,13 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         posts = posts.filter(p => relatedPosts.some(e => p.url === e.url));
 
         // filter away all the obvious stance
-        const obviousStances = $app.findAllRecords("stance", $dbx.hashExp({ obvious: true }), $dbx.exp("description != ''"));
+        let obviousStances = $app.findRecordsByFilter(
+            "stance",                                    // collection
+            "obvious = true && description != ''", // filter
+            "-rank",                                   // sort: higher = more relevant
+            100,                                         // limit
+            0,                                           // offset
+        );
         obviousStances.forEach(stance => {
             if (posts.length == 0) return;
             const relatedPosts = classifyPosts(stance?.get('description'));
