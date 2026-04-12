@@ -136,7 +136,9 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         const keywordStances = $app.findAllRecords("stance", $dbx.exp("keywords != ''"));
         keywordStances.forEach(stance => {
             const keywords = stance.get('keywords').split(', ');
-            const relatedPosts = posts.filter(post => keywords.some(keyword => post.content_text.toLowerCase().includes(keyword.toLowerCase())));
+            const relatedPosts = posts.filter(post =>
+                keywords.some(keyword => post.content_text.toLowerCase().includes(keyword))
+            );
             relatedPosts.forEach(post => createPostRecord(post, stance?.get('id'), true));
             posts = posts.filter(post => !relatedPosts.some(e => post.url === e.url));
         });
