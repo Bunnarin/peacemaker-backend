@@ -116,7 +116,7 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         sources.forEach(source => {
             let rss = source?.get('rss');
             if (!rss.startsWith('https')) // or else it's not from rss.app
-                rss = 'https://rss.app/feeds/v1.1/' + rss + '.json';
+                rss = `https://rss.app/feeds/v1.1/${rss}.json`;
             const { statusCode, json } = $http.send({ url: rss });
             if (statusCode !== 200)
                 throw new ApiError(statusCode, `rss err (${rss}):` + JSON.stringify(json));
@@ -153,13 +153,14 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         posts = posts.filter(p => relatedPosts.some(e => p.url === e.url));
 
         // filter away all the obvious stance
-        let obviousStances = $app.findRecordsByFilter(
-            "stance",                                    // collection
-            "obvious = true && description != ''", // filter
-            "-rank",                                   // sort: higher = more relevant
-            100,                                         // limit
-            0,                                           // offset
-        );
+        let obviousStances = $app.findAllRecords("stance", $dbx.exp("obvious = true"));
+        // sort by frequency
+        let stanceFrequencies = $app.findAllRecords("stance_frequency");
+        let stanceFrequenciesMap = stanceFrequencies.reduce((acc, stanceFrequency) => {
+            acc[stanceFrequency.id] = stanceFrequency.get('count');
+            return acc;
+        }, {});
+        obviousStances.sort((a, b) => stanceFrequenciesMap[b.id] - stanceFrequenciesMap[a.id]);
         obviousStances.forEach(stance => {
             if (posts.length == 0) return;
             const relatedPosts = classifyPosts(stance?.get('description'));
