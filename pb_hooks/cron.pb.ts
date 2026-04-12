@@ -79,7 +79,7 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
     }
 
     const postCollection = $app.findCollectionByNameOrId("post");
-    const createPostRecord = (post, stanceId = null) => {
+    const createPostRecord = (post, stanceId = null, approved = false) => {
         const postRecord = new Record(postCollection);
         postRecord.set('publishedOn', post.date_published);
         postRecord.set('url', post.url);
@@ -87,6 +87,7 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         postRecord.set('thumbnail', post.image);
         postRecord.set('source', post.sourceId);
         if (stanceId) postRecord.set('stance', stanceId);
+        if (approved) postRecord.set('approved', true);
         try {
             $app.save(postRecord);
         } catch {
@@ -136,7 +137,7 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         keywordStances.forEach(stance => {
             const keywords = stance.get('keywords').split(', ');
             const relatedPosts = posts.filter(post => keywords.some(keyword => post.content_text.toLowerCase().includes(keyword.toLowerCase())));
-            relatedPosts.forEach(post => createPostRecord(post, stance?.get('id')));
+            relatedPosts.forEach(post => createPostRecord(post, stance?.get('id'), true));
             posts = posts.filter(post => !relatedPosts.some(e => post.url === e.url));
         });
 
