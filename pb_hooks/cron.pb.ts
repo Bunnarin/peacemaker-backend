@@ -1,7 +1,6 @@
 /// <reference path="../pb_data/types.d.ts" />
 
 // since this cron is UTC and we want PP time 7-21, so we - 7
-// cron remove cuz on prod there's no cron job for some reason
 cronAdd('fetchRSS', '0 0-14 * * *', () => {
     const config = require(`${__hooks}/config.js`);
 
