@@ -5,7 +5,7 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
     const config = require(`${__hooks}/config.js`);
 
     // helpers
-    const classifyPosts = (problemDesc = null) => {
+    const classifyPosts = (problemDesc = null, exclusiveOrigin = null) => {
         const systemPrompt = problemDesc ?
             `Your job is to identify posts that are COMPLETELY RELATED to this "${problemDesc}".
             Rules:
@@ -17,6 +17,9 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
             Rules:
             - Evaluate EACH post in the list.
             - We strongly prefer FALSE POSITIVES over false negatives.`
+
+        const relevantPosts = exclusiveOrigin ? posts.filter(p => p.source.khmer == (exclusiveOrigin == 'kh')) : posts;
+
         while (modelIndex < models.length) {
             const { json, statusCode } = $http.send({
                 // 2mn may be too short
@@ -36,7 +39,7 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
                         },
                         {
                             role: "user",
-                            content: JSON.stringify(posts.map(p => ({ url: p.url, title: p.title })))
+                            content: JSON.stringify(relevantPosts.map(p => ({ url: p.url, title: p.title })))
                         },
                     ],
                     response_format: {
@@ -84,7 +87,7 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
         postRecord.set('url', post.url);
         postRecord.set('content', post.content_text);
         postRecord.set('thumbnail', post.image);
-        postRecord.set('source', post.sourceId);
+        postRecord.set('source', post.source.id);
         if (stanceId) postRecord.set('stance', stanceId);
         if (approved) postRecord.set('approved', true);
         try {
@@ -122,7 +125,7 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
                 throw new ApiError(statusCode, `rss err (${rss}):` + JSON.stringify(json));
             // inject source
             posts.push(...json.items.map(item => {
-                item.sourceId = source?.id;
+                item.source = source;
                 return item;
             }));
         });
@@ -131,10 +134,20 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
 
         posts.sort((a, b) => new Date(a.date_published) - new Date(b.date_published));
 
-        // first filter: keywords
+        // first filter: is it an anti-stance?
+        const antiStances = $app.findAllRecords("anti_stance");
+        antiStances.forEach(stance => {
+            const keywords = stance?.get('keywords').split(', ');
+            const relatedPosts = posts.filter(post =>
+                keywords.some(keyword => post.content_text.toLowerCase().includes(keyword))
+            );
+            posts = posts.filter(post => !relatedPosts.some(e => post.url === e.url));
+        });
+
+        // next filter: keywords
         const keywordStances = $app.findAllRecords("stance", $dbx.exp("keywords != ''"));
         keywordStances.forEach(stance => {
-            const keywords = stance.get('keywords').split(', ');
+            const keywords = stance?.get('keywords').split(', ');
             const relatedPosts = posts.filter(post =>
                 keywords.some(keyword => post.content_text.toLowerCase().includes(keyword))
             );
@@ -165,12 +178,12 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
         obviousStances.sort((a, b) => stanceFrequenciesMap[b.id] - stanceFrequenciesMap[a.id]);
         obviousStances.forEach(stance => {
             if (posts.length == 0) return;
-            const relatedPosts = classifyPosts(stance?.get('description'));
+            const relatedPosts = classifyPosts(stance?.get('description'), stance?.get('exclusiveOrigin'));
             relatedPosts.forEach(e => {
                 const post = posts.find(p => p.url === e.url);
                 if (!post) return;
                 posts = posts.filter(p => p.url !== post.url);
-                createPostRecord(post, stance?.get('id'));
+                createPostRecord(post, stance?.id);
             });
         });
 
