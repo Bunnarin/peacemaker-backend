@@ -91,7 +91,7 @@ async function notifyGuests() {
 
 async function notifyProgress() {
     if (!process.env.FB_ACCESS_TOKEN) return;
-    const res = await fetch('https://graph.facebook.com/v25.0/hybridkhthkhth?fields=followers_count&access_token=' + process.env.FB_ACCESS_TOKEN);
+    const res = await fetch('https://graph.facebook.com/v25.0/hybridkhth?fields=followers_count&access_token=' + process.env.FB_ACCESS_TOKEN);
     const data = await res.json();
     const count = data.followers_count;
     const lastCount = getKV('lastFBFollowerCount');
