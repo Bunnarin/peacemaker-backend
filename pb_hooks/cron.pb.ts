@@ -135,13 +135,14 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
         posts.sort((a, b) => new Date(a.date_published) - new Date(b.date_published));
 
         // first filter: is it an anti-stance?
-        const antiStances = $app.findAllRecords("anti_stance");
+        const antiStances = $app.findAllRecords("anti_stance", $dbx.hashExp({ approved: true }));
         antiStances.forEach(stance => {
             const keywords = stance?.get('keywords').split(', ');
-            const relatedPosts = posts.filter(post =>
-                keywords.some(keyword => post.content_text.toLowerCase().includes(keyword))
+            posts = posts.filter(post =>
+                !keywords.some(keyword =>
+                    post.content_text.toLowerCase().includes(keyword)
+                )
             );
-            posts = posts.filter(post => !relatedPosts.some(e => post.url === e.url));
         });
 
         // next filter: keywords
@@ -149,7 +150,9 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
         keywordStances.forEach(stance => {
             const keywords = stance?.get('keywords').split(', ');
             const relatedPosts = posts.filter(post =>
-                keywords.some(keyword => post.content_text.toLowerCase().includes(keyword))
+                keywords.some(keyword =>
+                    post.content_text.toLowerCase().includes(keyword)
+                )
             );
             relatedPosts.forEach(post => createPostRecord(post, stance?.get('id'), true));
             posts = posts.filter(post => !relatedPosts.some(e => post.url === e.url));
