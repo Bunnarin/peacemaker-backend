@@ -18,7 +18,11 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
             - Evaluate EACH post in the list.
             - We strongly prefer FALSE POSITIVES over false negatives.`
 
-        const relevantPosts = exclusiveOrigin ? posts.filter(p => p.source.khmer == (exclusiveOrigin == 'kh')) : posts;
+        let relevantPosts = posts.slice(0, config.MAX_POST_PER_PROMPT);
+        if (exclusiveOrigin)
+            relevantPosts = relevantPosts.filter(p =>
+                p.source.khmer == (exclusiveOrigin == 'kh')
+            );
 
         while (modelIndex < models.length) {
             const { json, statusCode } = $http.send({
@@ -110,99 +114,93 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
 
     let posts = [];
 
-    try {
-        const postLastReviewedRecord = $app.findRecordById('KV', 'postLastReviewed');
-        let latestDate = new Date(postLastReviewedRecord.get('value') || 0);
+    const postLastReviewedRecord = $app.findRecordById('KV', 'postLastReviewed');
+    let latestDate = new Date(postLastReviewedRecord.get('value') || 0);
 
-        // ok lets aggregate
-        const sources = $app.findAllRecords("source", $dbx.exp("rss != ''"), $dbx.hashExp({ approved: true }));
-        sources.forEach(source => {
-            let rss = source?.get('rss');
-            if (!rss.startsWith('https')) // or else it's not from rss.app
-                rss = `https://rss.app/feeds/v1.1/${rss}.json`;
-            const { statusCode, json } = $http.send({ url: rss });
-            if (statusCode !== 200)
-                throw new ApiError(statusCode, `rss err (${rss}):` + JSON.stringify(json));
-            // inject source
-            posts.push(...json.items.map(item => {
-                item.source = source;
-                return item;
-            }));
+    // ok lets aggregate
+    const sources = $app.findAllRecords("source", $dbx.exp("rss != ''"), $dbx.hashExp({ approved: true }));
+    sources.forEach(source => {
+        let rss = source?.get('rss');
+        if (!rss.startsWith('https')) // or else it's not from rss.app
+            rss = `https://rss.app/feeds/v1.1/${rss}.json`;
+        const { statusCode, json } = $http.send({ url: rss });
+        if (statusCode !== 200)
+            throw new ApiError(statusCode, `rss err (${rss}):` + JSON.stringify(json));
+        // inject source
+        posts.push(...json.items.map(item => {
+            item.source = source;
+            return item;
+        }));
+    });
+    posts = posts.filter(post => new Date(post.date_published) > latestDate);
+    if (posts.length === 0) return;
+
+    posts.sort((a, b) => new Date(a.date_published) - new Date(b.date_published));
+
+    // 1st filter: is it an anti-stance?
+    const antiStances = $app.findAllRecords("anti_stance", $dbx.hashExp({ approved: true }));
+    antiStances.forEach(stance => {
+        const keywords = stance?.get('keywords').split(', ');
+        posts = posts.filter(post =>
+            !keywords.some(keyword =>
+                post.content_text.toLowerCase().includes(keyword)
+            )
+        );
+    });
+
+    // 2nd filter: keywords
+    const keywordStances = $app.findAllRecords("stance", $dbx.exp("keywords != ''"));
+    keywordStances.forEach(stance => {
+        const keywords = stance?.get('keywords').split(', ');
+        const relatedPosts = posts.filter(post =>
+            keywords.some(keyword =>
+                post.content_text.toLowerCase().includes(keyword)
+            )
+        );
+        relatedPosts.forEach(post => createPostRecord(post, stance?.get('id'), true));
+        posts = posts.filter(post => !relatedPosts.some(e => post.url === e.url));
+    });
+
+    latestDate = posts.reduce((maxDate, currentPost) => {
+        const currentDate = new Date(currentPost.date_published);
+        return currentDate > maxDate ? currentDate : maxDate;
+    }, new Date(posts[0].date_published)); // Initialize with the first post's date
+
+    // don't waste LLM if post count too low
+    if (posts.length < config.MAX_POST_PER_PROMPT / 2) return;
+
+    // 3rd filter: is it even related the slightest bit to the hatred
+    const relatedPosts = classifyPosts();
+    posts = posts.filter(p => relatedPosts.some(e => p.url === e.url));
+
+    // 4th: filter away all the obvious stance
+    let obviousStances = $app.findAllRecords("stance", $dbx.exp("obvious = true"));
+    // sort by frequency
+    let stanceFrequencies = $app.findAllRecords("stance_frequency");
+    let stanceFrequenciesMap = stanceFrequencies.reduce((acc, stanceFrequency) => {
+        acc[stanceFrequency.id] = stanceFrequency.get('count');
+        return acc;
+    }, {});
+    obviousStances.sort((a, b) => stanceFrequenciesMap[b.id] - stanceFrequenciesMap[a.id]);
+    obviousStances.forEach(stance => {
+        if (posts.length == 0) return;
+        const relatedPosts = classifyPosts(stance?.get('description'), stance?.get('exclusiveOrigin'));
+        relatedPosts.forEach(e => {
+            const post = posts.find(p => p.url === e.url);
+            if (!post) return;
+            posts = posts.filter(p => p.url !== post.url);
+            createPostRecord(post, stance?.id);
         });
-        posts = posts.filter(post => new Date(post.date_published) > latestDate);
-        if (posts.length === 0) return;
+    });
 
-        posts.sort((a, b) => new Date(a.date_published) - new Date(b.date_published));
+    // the remaining post that didn't get any stance, we create empty stuff for review
+    posts.forEach(post => createPostRecord(post));
 
-        // first filter: is it an anti-stance?
-        const antiStances = $app.findAllRecords("anti_stance", $dbx.hashExp({ approved: true }));
-        antiStances.forEach(stance => {
-            const keywords = stance?.get('keywords').split(', ');
-            posts = posts.filter(post =>
-                !keywords.some(keyword =>
-                    post.content_text.toLowerCase().includes(keyword)
-                )
-            );
-        });
+    postLastReviewedRecord.set('value', latestDate.toISOString());
+    $app.save(postLastReviewedRecord);
 
-        // next filter: keywords
-        const keywordStances = $app.findAllRecords("stance", $dbx.exp("keywords != ''"));
-        keywordStances.forEach(stance => {
-            const keywords = stance?.get('keywords').split(', ');
-            const relatedPosts = posts.filter(post =>
-                keywords.some(keyword =>
-                    post.content_text.toLowerCase().includes(keyword)
-                )
-            );
-            relatedPosts.forEach(post => createPostRecord(post, stance?.get('id'), true));
-            posts = posts.filter(post => !relatedPosts.some(e => post.url === e.url));
-        });
-
-        posts = posts.slice(0, config.MAX_POST_PER_PROMPT);
-        // don't waste LLM if post count too low
-        if (posts.length < config.MAX_POST_PER_PROMPT / 2) return;
-        latestDate = posts.reduce((maxDate, currentPost) => {
-            const currentDate = new Date(currentPost.date_published);
-            return currentDate > maxDate ? currentDate : maxDate;
-        }, new Date(posts[0].date_published)); // Initialize with the first post's date
-
-        // 2nd filter: is it even related the slightest bit to the hatred
-        const relatedPosts = classifyPosts();
-        posts = posts.filter(p => relatedPosts.some(e => p.url === e.url));
-
-        // filter away all the obvious stance
-        let obviousStances = $app.findAllRecords("stance", $dbx.exp("obvious = true"));
-        // sort by frequency
-        let stanceFrequencies = $app.findAllRecords("stance_frequency");
-        let stanceFrequenciesMap = stanceFrequencies.reduce((acc, stanceFrequency) => {
-            acc[stanceFrequency.id] = stanceFrequency.get('count');
-            return acc;
-        }, {});
-        obviousStances.sort((a, b) => stanceFrequenciesMap[b.id] - stanceFrequenciesMap[a.id]);
-        obviousStances.forEach(stance => {
-            if (posts.length == 0) return;
-            const relatedPosts = classifyPosts(stance?.get('description'), stance?.get('exclusiveOrigin'));
-            relatedPosts.forEach(e => {
-                const post = posts.find(p => p.url === e.url);
-                if (!post) return;
-                posts = posts.filter(p => p.url !== post.url);
-                createPostRecord(post, stance?.id);
-            });
-        });
-
-        // the remaining post that didn't get any stance, we create empty stuff for review
-        posts.forEach(post => createPostRecord(post));
-
-        postLastReviewedRecord.set('value', latestDate.toISOString());
-        $app.save(postLastReviewedRecord);
-
-        // healthcheck
-        $http.send({ url: config.HEALTH_CHECK_URL });
-    } catch (e) {
-        // signal a fail
-        $http.send({ url: config.HEALTH_CHECK_URL + '/fail' });
-        throw new ApiError(400, e.message);
-    }
+    // healthcheck
+    $http.send({ url: config.HEALTH_CHECK_URL });
 });
 
 cronAdd('cleanupOldPosts', '@daily', () => {
