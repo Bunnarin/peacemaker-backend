@@ -115,7 +115,7 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
     let posts = [];
 
     const postLastReviewedRecord = $app.findRecordById('KV', 'postLastReviewed');
-    let latestDate = new Date(postLastReviewedRecord.get('value') || 0);
+    let latestDate = postLastReviewedRecord.get('value');
 
     // ok lets aggregate
     const sources = $app.findAllRecords("source", $dbx.exp("rss != ''"), $dbx.hashExp({ approved: true }));
@@ -132,10 +132,11 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
             return item;
         }));
     });
-    posts = posts.filter(post => new Date(post.date_published) > latestDate);
+    posts = posts.filter(post => new Date(post.date_published) > new Date(latestDate));
     if (posts.length === 0) return;
 
     posts.sort((a, b) => new Date(a.date_published) - new Date(b.date_published));
+    latestDate = posts.at(-1).date_published;
 
     // 1st filter: is it an anti-stance?
     const antiStances = $app.findAllRecords("anti_stance", $dbx.hashExp({ approved: true }));
@@ -161,11 +162,6 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
         posts = posts.filter(post => !relatedPosts.some(e => post.url === e.url));
     });
 
-    latestDate = posts.reduce((maxDate, currentPost) => {
-        const currentDate = new Date(currentPost.date_published);
-        return currentDate > maxDate ? currentDate : maxDate;
-    }, new Date(posts[0].date_published)); // Initialize with the first post's date
-
     // don't waste LLM if post count too low
     if (posts.length < config.MAX_POST_PER_PROMPT / 2) return;
 
@@ -189,14 +185,14 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
             const post = posts.find(p => p.url === e.url);
             if (!post) return;
             posts = posts.filter(p => p.url !== post.url);
-            createPostRecord(post, stance?.id);
+            createPostRecord(post, stance?.id, true);
         });
     });
 
     // the remaining post that didn't get any stance, we create empty stuff for review
     posts.forEach(post => createPostRecord(post));
 
-    postLastReviewedRecord.set('value', latestDate.toISOString());
+    postLastReviewedRecord.set('value', latestDate);
     $app.save(postLastReviewedRecord);
 
     // healthcheck
