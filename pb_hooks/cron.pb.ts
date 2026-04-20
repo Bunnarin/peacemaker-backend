@@ -92,8 +92,8 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
         postRecord.set('content', post.content_text);
         postRecord.set('thumbnail', post.image);
         postRecord.set('source', post.source.id);
+        postRecord.set('AI_approved', approved);
         if (stanceId) postRecord.set('stance', stanceId);
-        if (approved) postRecord.set('approved', true);
         try {
             $app.save(postRecord);
         } catch {
