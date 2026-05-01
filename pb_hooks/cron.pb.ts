@@ -164,7 +164,7 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
     });
 
     // don't waste LLM if post count too low
-    if (posts.length < config.MAX_POST_PER_PROMPT / 2) return;
+    // if (posts.length < config.MAX_POST_PER_PROMPT / 2) return;
 
     // 3rd filter: is it even related the slightest bit to the hatred
     // const relatedPosts = classifyPosts();
