@@ -1,8 +1,8 @@
 /// <reference path="../pb_data/types.d.ts" />
 
 // since this cron is UTC and we want PP time 7-21, so we - 7
-// */15 0-14 * * *
-cronAdd('fetchRSS', '@daily', () => {
+// we don't need AI, no?
+cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
     const config = require(`${__hooks}/config.js`);
 
     // helpers
@@ -119,7 +119,7 @@ cronAdd('fetchRSS', '@daily', () => {
     let latestDate = postLastReviewedRecord.get('value');
 
     // ok lets aggregate
-    const sources = $app.findAllRecords("source", $dbx.exp("rss != ''"), $dbx.hashExp({ approved: true }));
+    const sources = $app.findAllRecords("source", $dbx.exp("rss != ''"), $dbx.exp("engagement_score > 0") $dbx.hashExp({ approved: true }));
     sources.forEach(source => {
         let rss = source?.get('rss');
         if (!rss.startsWith('https')) // or else it's not from rss.app
@@ -159,7 +159,7 @@ cronAdd('fetchRSS', '@daily', () => {
                 post.content_text.toLowerCase().includes(keyword)
             )
         );
-        relatedPosts.forEach(post => createPostRecord(post, stance?.get('id'), true));
+        relatedPosts.forEach(post => createPostRecord(post, stance?.get('id')));
         posts = posts.filter(post => !relatedPosts.some(e => post.url === e.url));
     });
 
@@ -167,28 +167,28 @@ cronAdd('fetchRSS', '@daily', () => {
     if (posts.length < config.MAX_POST_PER_PROMPT / 2) return;
 
     // 3rd filter: is it even related the slightest bit to the hatred
-    const relatedPosts = classifyPosts();
-    posts = posts.filter(p => relatedPosts.some(e => p.url === e.url));
+    // const relatedPosts = classifyPosts();
+    // posts = posts.filter(p => relatedPosts.some(e => p.url === e.url));
 
     // 4th: filter away all the obvious stance
-    let obviousStances = $app.findAllRecords("stance", $dbx.exp("obvious = true"));
-    // sort by frequency
-    let stanceFrequencies = $app.findAllRecords("stance_frequency");
-    let stanceFrequenciesMap = stanceFrequencies.reduce((acc, stanceFrequency) => {
-        acc[stanceFrequency.id] = stanceFrequency.get('count');
-        return acc;
-    }, {});
-    obviousStances.sort((a, b) => stanceFrequenciesMap[b.id] - stanceFrequenciesMap[a.id]);
-    obviousStances.forEach(stance => {
-        if (posts.length == 0) return;
-        const relatedPosts = classifyPosts(stance?.get('description'), stance?.get('exclusiveOrigin'));
-        relatedPosts.forEach(e => {
-            const post = posts.find(p => p.url === e.url);
-            if (!post) return;
-            posts = posts.filter(p => p.url !== post.url);
-            createPostRecord(post, stance?.id, true);
-        });
-    });
+    // let obviousStances = $app.findAllRecords("stance", $dbx.exp("obvious = true"));
+    // // sort by frequency
+    // let stanceFrequencies = $app.findAllRecords("stance_frequency");
+    // let stanceFrequenciesMap = stanceFrequencies.reduce((acc, stanceFrequency) => {
+    //     acc[stanceFrequency.id] = stanceFrequency.get('count');
+    //     return acc;
+    // }, {});
+    // obviousStances.sort((a, b) => stanceFrequenciesMap[b.id] - stanceFrequenciesMap[a.id]);
+    // obviousStances.forEach(stance => {
+    //     if (posts.length == 0) return;
+    //     const relatedPosts = classifyPosts(stance?.get('description'), stance?.get('exclusiveOrigin'));
+    //     relatedPosts.forEach(e => {
+    //         const post = posts.find(p => p.url === e.url);
+    //         if (!post) return;
+    //         posts = posts.filter(p => p.url !== post.url);
+    //         createPostRecord(post, stance?.id, true);
+    //     });
+    // });
 
     // the remaining post that didn't get any stance, we create empty stuff for review
     posts.forEach(post => createPostRecord(post));
