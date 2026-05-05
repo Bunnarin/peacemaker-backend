@@ -2,7 +2,6 @@
 
 // since this cron is UTC and we want PP time 7-21, so we - 7
 // we don't need AI, no?
-cronRemove('fetchRSS');
 cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
     const config = require(`${__hooks}/config.js`);
 
@@ -120,7 +119,7 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
     let latestDate = postLastReviewedRecord.get('value');
 
     // ok lets aggregate
-    const sources = $app.findAllRecords("source", $dbx.exp("rss != ''"), $dbx.exp("engagement_score > 0") $dbx.hashExp({ approved: true }));
+    const sources = $app.findAllRecords("source", $dbx.exp("rss != ''"), $dbx.exp("engagement_score > 0"), $dbx.hashExp({ approved: true }));
     sources.forEach(source => {
         let rss = source?.get('rss');
         if (!rss.startsWith('https')) // or else it's not from rss.app
