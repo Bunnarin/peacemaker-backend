@@ -2,6 +2,7 @@
 
 // since this cron is UTC and we want PP time 7-21, so we - 7
 // we don't need AI, no?
+cronRemove('fetchRSS');
 cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
     const config = require(`${__hooks}/config.js`);
 
