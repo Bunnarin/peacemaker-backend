@@ -2,7 +2,7 @@
 
 // since this cron is UTC and we want PP time 7-21, so we - 7
 // we don't need AI, no?
-cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
+cronAdd('fetchRSS', '0 0-14 * * *', () => {
     const config = require(`${__hooks}/config.js`);
 
     // helpers
@@ -167,8 +167,8 @@ cronAdd('fetchRSS', '*/15 0-14 * * *', () => {
     // if (posts.length < config.MAX_POST_PER_PROMPT / 2) return;
 
     // 3rd filter: is it even related the slightest bit to the hatred
-    // const relatedPosts = classifyPosts();
-    // posts = posts.filter(p => relatedPosts.some(e => p.url === e.url));
+    const relatedPosts = classifyPosts();
+    posts = posts.filter(p => relatedPosts.some(e => p.url === e.url));
 
     // 4th: filter away all the obvious stance
     // let obviousStances = $app.findAllRecords("stance", $dbx.exp("obvious = true"));
