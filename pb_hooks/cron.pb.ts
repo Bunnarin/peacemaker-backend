@@ -1,31 +1,23 @@
 /// <reference path="../pb_data/types.d.ts" />
 
 // since this cron is UTC and we want PP time 7-21, so we - 7
-// we don't need AI, no?
 cronAdd('fetchRSS', '0 0-14 * * *', () => {
     const config = require(`${__hooks}/config.js`);
 
     // helpers
-    const classifyPosts = (problemDesc = null, exclusiveOrigin = null) => {
-        const systemPrompt = problemDesc ?
-            `Your job is to identify posts that are COMPLETELY RELATED to this "${problemDesc}".
-            Rules:
-            - Evaluate EACH post in the list.
-            - We strongly prefer FALSE NEGATIVES over false positives.`
-            :
-            `Your job is to determine if each post relates to the Cambodia-Thailand hatred and rivalry.
+    const getRelatedPosts = () => {
+        const systemPrompt = `
+            Your job is to determine if each post relates to the Cambodia-Thailand hatred and rivalry.
             This hatred includes not just border conflicts, but also culture wars, historical claims, toxic nationalism, rivalry, or rude remarks over each other's tragedies and differences.
             Rules:
             - Evaluate EACH post in the list.
-            - We strongly prefer FALSE POSITIVES over false negatives.`
+            - We strongly prefer FALSE POSITIVES over false negatives.
+        `
 
         let relevantPosts = posts.slice(0, config.MAX_POST_PER_PROMPT);
-        if (exclusiveOrigin)
-            relevantPosts = relevantPosts.filter(p =>
-                p.source.khmer == (exclusiveOrigin == 'kh')
-            );
 
         while (modelIndex < models.length) {
+            console.log('calling LLM')
             const { json, statusCode } = $http.send({
                 // 2mn may be too short
                 timeout: 500,
@@ -85,20 +77,43 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
         throw new ApiError(400, 'All LLM models exhausted or failed.');
     }
 
+    const embedPost = (post) => {
+        console.log('embeding')
+        const { json, statusCode } = $http.send({
+            url: "http://localhost:8080/embed",
+            method: 'POST',
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                inputs: post.content_text,
+            })
+        })
+        if (statusCode === 200)
+            return json[0];
+        throw new ApiError(statusCode, 'LLM failed: ' + JSON.stringify(json));
+    }
+
     const postCollection = $app.findCollectionByNameOrId("post");
-    const createPostRecord = (post, stanceId = null, approved = false) => {
+    const createPostRecord = (post, stanceId = null) => {
         const postRecord = new Record(postCollection);
         postRecord.set('publishedOn', post.date_published);
         postRecord.set('url', post.url);
         postRecord.set('content', post.content_text);
         postRecord.set('thumbnail', post.image);
         postRecord.set('source', post.source.id);
-        postRecord.set('AI_approved', approved);
         if (stanceId) postRecord.set('stance', stanceId);
+        else {
+            // embed this post
+            const embedding = embedPost(post);
+            postRecord.set('embedding', embedding);
+        }
         try {
             $app.save(postRecord);
-        } catch {
-            // could be that the post already exists
+            return postRecord;
+        } catch (e) {
+            console.log(e);
+            return null;
         }
     }
 
@@ -126,7 +141,9 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
             rss = `https://rss.app/feeds/v1.1/${rss}.json`;
         const { statusCode, json } = $http.send({ url: rss });
         if (statusCode !== 200)
-            throw new ApiError(statusCode, `rss err (${rss}):` + JSON.stringify(json));
+            // WIP: development only
+            // throw new ApiError(statusCode, `rss err (${rss}):` + JSON.stringify(json));
+            return;
         // inject source
         posts.push(...json.items.map(item => {
             item.source = source;
@@ -138,6 +155,8 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
 
     posts.sort((a, b) => new Date(a.date_published) - new Date(b.date_published));
     latestDate = posts.at(-1).date_published;
+
+    console.log(posts.length)
 
     // 1st filter: is it an anti-stance?
     const antiStances = $app.findAllRecords("anti_stance", $dbx.hashExp({ approved: true }));
@@ -167,32 +186,28 @@ cronAdd('fetchRSS', '0 0-14 * * *', () => {
     // if (posts.length < config.MAX_POST_PER_PROMPT / 2) return;
 
     // 3rd filter: is it even related the slightest bit to the hatred
-    const relatedPosts = classifyPosts();
-    posts = posts.filter(p => relatedPosts.some(e => p.url === e.url));
-
-    // 4th: filter away all the obvious stance
-    // let obviousStances = $app.findAllRecords("stance", $dbx.exp("obvious = true"));
-    // // sort by frequency
-    // let stanceFrequencies = $app.findAllRecords("stance_frequency");
-    // let stanceFrequenciesMap = stanceFrequencies.reduce((acc, stanceFrequency) => {
-    //     acc[stanceFrequency.id] = stanceFrequency.get('count');
-    //     return acc;
-    // }, {});
-    // obviousStances.sort((a, b) => stanceFrequenciesMap[b.id] - stanceFrequenciesMap[a.id]);
-    // obviousStances.forEach(stance => {
-    //     if (posts.length == 0) return;
-    //     const relatedPosts = classifyPosts(stance?.get('description'), stance?.get('exclusiveOrigin'));
-    //     relatedPosts.forEach(e => {
-    //         const post = posts.find(p => p.url === e.url);
-    //         if (!post) return;
-    //         posts = posts.filter(p => p.url !== post.url);
-    //         createPostRecord(post, stance?.id, true);
-    //     });
-    // });
+    // const relatedPosts = getRelatedPosts();
+    // posts = posts.filter(p => relatedPosts.some(e => p.url === e.url));
 
     // the remaining post that didn't get any stance, we create empty stuff for review
-    posts.forEach(post => createPostRecord(post));
+    const newPostRecords = posts
+        .map(post => createPostRecord(post))
+        .filter(r => r !== null);
 
+    // Incrementally update the grouped posts cache with new posts
+    if (newPostRecords.length > 0) {
+        const cache = require(`${__hooks}/groupedPostsCache.js`);
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const recentPosts = $app.findAllRecords("post",
+            $dbx.hashExp({ approved: false, stance: "" }),
+            $dbx.exp("embedding is not null"),
+            $dbx.exp(`"publishedOn" >= '${sevenDaysAgo.toISOString()}'`)
+        );
+        cache.mergeNewPostsIntoCache(newPostRecords, recentPosts, config.SIMILARITY_THRESHOLD);
+    }
+
+    // bump the time threshold
     postLastReviewedRecord.set('value', latestDate);
     $app.save(postLastReviewedRecord);
 

@@ -33,6 +33,7 @@ onRecordCreate(e => {
     }
 
     const domainMap = {
+        'https://m.facebook.com/': 'fb',
         'https://web.facebook.com/': 'fb',
         'https://www.facebook.com/': 'fb',
         'https://x.com/': 'x',
@@ -90,3 +91,22 @@ onRecordsListRequest(e => {
     });
     e.next();
 }, 'post', 'source')
+
+// Cache invalidation: when a post is assigned a stance, remove it from grouped posts cache
+onRecordUpdate(e => {
+    const newStance = e.record?.get('stance');
+    const oldStance = e.record?.original()?.get('stance');
+    // only invalidate when stance changes from empty to non-empty
+    if (newStance && !oldStance) {
+        const cache = require(`${__hooks}/groupedPostsCache.js`);
+        cache.removePostFromCache(e.record?.get('id'));
+    }
+    e.next();
+}, 'post')
+
+// Cache invalidation: when a post is deleted, remove it from grouped posts cache
+onRecordDelete(e => {
+    const cache = require(`${__hooks}/groupedPostsCache.js`);
+    cache.removePostFromCache(e.record?.get('id'));
+    e.next();
+}, 'post')

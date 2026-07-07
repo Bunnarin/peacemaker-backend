@@ -931,6 +931,77 @@ migrate((app) => {
           ]
         },
         {
+          "cascadeDelete": false,
+          "collectionId": "pbc_1754858045",
+          "hidden": false,
+          "id": "relation1602912115",
+          "maxSelect": 1,
+          "minSelect": 0,
+          "name": "source",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "relation"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text2812878347",
+          "max": 0,
+          "min": 0,
+          "name": "domain",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": true,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text3277268710",
+          "max": 0,
+          "min": 0,
+          "name": "thumbnail",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "hidden": false,
+          "id": "date3556999320",
+          "max": "",
+          "min": "",
+          "name": "publishedOn",
+          "presentable": false,
+          "required": true,
+          "system": false,
+          "type": "date"
+        },
+        {
+          "hidden": false,
+          "id": "bool2859520634",
+          "name": "AI_approved",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "bool"
+        },
+        {
+          "hidden": false,
+          "id": "json1213945262",
+          "maxSize": 0,
+          "name": "embedding",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "json"
+        },
+        {
           "hidden": false,
           "id": "autodate2048051762",
           "name": "updatedOn",
@@ -946,7 +1017,7 @@ migrate((app) => {
         "CREATE UNIQUE INDEX `idx_EN8Sm43JtR` ON `ig` (`url`)",
         "CREATE INDEX `idx_W83OWnYmPP` ON `post` (`updatedOn`)"
       ],
-      "listRule": "(approved = @request.auth.reviewer) || approved = false",
+      "listRule": "",
       "name": "post",
       "system": false,
       "type": "base",
@@ -958,7 +1029,7 @@ migrate((app) => {
       "deleteRule": null,
       "fields": [
         {
-          "autogeneratePattern": "",
+          "autogeneratePattern": "[a-z0-9]{15}",
           "hidden": false,
           "id": "text3208210256",
           "max": 0,
@@ -1025,18 +1096,107 @@ migrate((app) => {
           "required": false,
           "system": false,
           "type": "text"
+        },
+        {
+          "hidden": false,
+          "id": "bool3097791879",
+          "name": "needVPN",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "bool"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text2812878347",
+          "max": 0,
+          "min": 0,
+          "name": "domain",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": true,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "hidden": false,
+          "id": "select4258108440",
+          "maxSelect": 2,
+          "name": "audiences",
+          "presentable": false,
+          "required": true,
+          "system": false,
+          "type": "select",
+          "values": [
+            "kh",
+            "th"
+          ]
+        },
+        {
+          "hidden": false,
+          "id": "number2564065015",
+          "max": null,
+          "min": null,
+          "name": "followers_count",
+          "onlyInt": false,
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "number"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text1281549880",
+          "max": 0,
+          "min": 0,
+          "name": "contact",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text1579384326",
+          "max": 0,
+          "min": 0,
+          "name": "name",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "hidden": false,
+          "id": "number2702878825",
+          "max": null,
+          "min": null,
+          "name": "engagement_score",
+          "onlyInt": false,
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "number"
         }
       ],
       "id": "pbc_1754858045",
       "indexes": [
-        "CREATE UNIQUE INDEX `idx_jVTJoZIVBW` ON `source` (`url`)"
+        "CREATE UNIQUE INDEX `idx_jVTJoZIVBW` ON `source` (\n  `url`,\n  `domain`\n)"
       ],
       "listRule": "approved = true",
       "name": "source",
       "system": false,
       "type": "base",
       "updateRule": null,
-      "viewRule": null
+      "viewRule": "approved = true"
     },
     {
       "createRule": null,
@@ -1210,12 +1370,21 @@ migrate((app) => {
           "type": "bool"
         },
         {
+          "hidden": false,
+          "id": "bool1306378733",
+          "name": "obvious",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "bool"
+        },
+        {
           "autogeneratePattern": "",
           "hidden": false,
-          "id": "text2200387651",
-          "max": 280,
+          "id": "text1843675174",
+          "max": 0,
           "min": 0,
-          "name": "kh_kh_x",
+          "name": "description",
           "pattern": "",
           "presentable": false,
           "primaryKey": false,
@@ -1226,10 +1395,10 @@ migrate((app) => {
         {
           "autogeneratePattern": "",
           "hidden": false,
-          "id": "text2338129802",
-          "max": 280,
+          "id": "text2858399070",
+          "max": 0,
           "min": 0,
-          "name": "kh_th_x",
+          "name": "keywords",
           "pattern": "",
           "presentable": false,
           "primaryKey": false,
@@ -1238,32 +1407,30 @@ migrate((app) => {
           "type": "text"
         },
         {
-          "autogeneratePattern": "",
           "hidden": false,
-          "id": "text313633892",
-          "max": 280,
-          "min": 0,
-          "name": "th_kh_x",
-          "pattern": "",
+          "id": "number2289690853",
+          "max": null,
+          "min": null,
+          "name": "rank",
+          "onlyInt": true,
           "presentable": false,
-          "primaryKey": false,
           "required": false,
           "system": false,
-          "type": "text"
+          "type": "number"
         },
         {
-          "autogeneratePattern": "",
           "hidden": false,
-          "id": "text449571757",
-          "max": 280,
-          "min": 0,
-          "name": "th_th_x",
-          "pattern": "",
+          "id": "select1430541175",
+          "maxSelect": 1,
+          "name": "exclusiveOrigin",
           "presentable": false,
-          "primaryKey": false,
           "required": false,
           "system": false,
-          "type": "text"
+          "type": "select",
+          "values": [
+            "kh",
+            "th"
+          ]
         }
       ],
       "id": "pbc_3052289650",
@@ -1333,6 +1500,126 @@ migrate((app) => {
       ],
       "listRule": null,
       "name": "guest",
+      "system": false,
+      "type": "base",
+      "updateRule": null,
+      "viewRule": null
+    },
+    {
+      "createRule": null,
+      "deleteRule": null,
+      "fields": [
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text3208210256",
+          "max": 0,
+          "min": 0,
+          "name": "id",
+          "pattern": "^[a-z0-9]+$",
+          "presentable": false,
+          "primaryKey": true,
+          "required": true,
+          "system": true,
+          "type": "text"
+        },
+        {
+          "hidden": false,
+          "id": "number2245608546",
+          "max": null,
+          "min": null,
+          "name": "count",
+          "onlyInt": false,
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "number"
+        }
+      ],
+      "id": "pbc_1978854890",
+      "indexes": [],
+      "listRule": "",
+      "name": "stance_frequency",
+      "system": false,
+      "type": "view",
+      "updateRule": null,
+      "viewQuery": "SELECT stance as id, COUNT(*) AS count\nFROM post\nWHERE approved = true AND stance != ''\nGROUP BY stance;",
+      "viewRule": ""
+    },
+    {
+      "createRule": null,
+      "deleteRule": null,
+      "fields": [
+        {
+          "autogeneratePattern": "[a-z0-9]{15}",
+          "hidden": false,
+          "id": "text3208210256",
+          "max": 0,
+          "min": 0,
+          "name": "id",
+          "pattern": "^[a-z0-9_]+$",
+          "presentable": false,
+          "primaryKey": true,
+          "required": true,
+          "system": true,
+          "type": "text"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text1843675174",
+          "max": 0,
+          "min": 0,
+          "name": "description",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "autogeneratePattern": "",
+          "hidden": false,
+          "id": "text2858399070",
+          "max": 0,
+          "min": 0,
+          "name": "keywords",
+          "pattern": "",
+          "presentable": false,
+          "primaryKey": false,
+          "required": false,
+          "system": false,
+          "type": "text"
+        },
+        {
+          "hidden": false,
+          "id": "select1430541175",
+          "maxSelect": 1,
+          "name": "exclusive_origin",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "select",
+          "values": [
+            "kh",
+            "th"
+          ]
+        },
+        {
+          "hidden": false,
+          "id": "bool2086131741",
+          "name": "approved",
+          "presentable": false,
+          "required": false,
+          "system": false,
+          "type": "bool"
+        }
+      ],
+      "id": "pbc_1095482667",
+      "indexes": [],
+      "listRule": null,
+      "name": "anti_stance",
       "system": false,
       "type": "base",
       "updateRule": null,
