@@ -14,8 +14,8 @@ webpush.setVapidDetails(
 const db = new Database('pb_data/data.db');
 
 notifyReviewers();
-notifyGuests();
-notifyProgress();
+// notifyGuests();
+// notifyProgress();
 https.get('https://hc-ping.com/f1d7d228-b6da-4602-a1a7-d6c5492bf0c3');
 
 /**

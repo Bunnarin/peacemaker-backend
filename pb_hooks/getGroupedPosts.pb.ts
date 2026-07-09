@@ -2,7 +2,7 @@
 
 routerAdd('GET', '/grouped-posts', e => {
     const config = require(`${__hooks}/config.js`)
-    const cache = require(`${__hooks}/groupedPostsCache.js`)
+    const cache = require(`${__hooks}/utils.groupedPostsCache.js`)
 
     // Try cache first
     const cachedGroups = cache.loadCache();
@@ -15,8 +15,8 @@ routerAdd('GET', '/grouped-posts', e => {
                     .map(id => {
                         try {
                             const post = $app.findRecordById('post', id);
-                            // skip if post has been approved or assigned a stance in the meantime
-                            if (post.get('approved') || post.get('stance'))
+                            // skip if post has been approved, marked as anti_stance, or assigned a stance (it will be shown as a suggested stance card instead)
+                            if (post.get('approved') || post.get('anti_stance') || post.get('stance'))
                                 return null;
                             const cleanPost = JSON.parse(JSON.stringify(post));
                             delete cleanPost.embedding;
@@ -29,13 +29,21 @@ routerAdd('GET', '/grouped-posts', e => {
             })
             .filter(group => group.length > 0);
 
-        e.json(200, responseGroups);
+        // Fetch unapproved posts that already have a stance (suggested stances)
+        const suggestedPosts = $app.findAllRecords("post", $dbx.hashExp({ approved: false, anti_stance: "" }), $dbx.exp("stance != ''"));
+        const suggestedGroups = suggestedPosts.map(post => {
+            const cleanPost = JSON.parse(JSON.stringify(post));
+            delete cleanPost.embedding;
+            return [cleanPost];
+        });
+
+        e.json(200, [...suggestedGroups, ...responseGroups]);
         return;
     }
 
     // Cache miss — full recomputation
     const SIMILARITY_THRESHOLD = e.requestInfo().query["similarity_threshold"] || config.SIMILARITY_THRESHOLD;
-    const posts = $app.findAllRecords("post", $dbx.hashExp({ approved: false, stance: "" }), $dbx.exp("embedding is not null"));
+    const posts = $app.findAllRecords("post", $dbx.hashExp({ approved: false, stance: "", anti_stance: "" }), $dbx.exp("embedding is not null"));
 
     const groups = cache.computeGroups(posts, SIMILARITY_THRESHOLD);
 
@@ -56,5 +64,13 @@ routerAdd('GET', '/grouped-posts', e => {
         }).filter(Boolean)
     ).filter(group => group.length > 0);
 
-    e.json(200, responseGroups);
+    // Fetch unapproved posts that already have a stance (suggested stances)
+    const suggestedPosts = $app.findAllRecords("post", $dbx.hashExp({ approved: false, anti_stance: "" }), $dbx.exp("stance != ''"));
+    const suggestedGroups = suggestedPosts.map(post => {
+        const cleanPost = JSON.parse(JSON.stringify(post));
+        delete cleanPost.embedding;
+        return [cleanPost];
+    });
+
+    e.json(200, [...suggestedGroups, ...responseGroups]);
 })

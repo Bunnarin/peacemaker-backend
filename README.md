@@ -41,4 +41,4 @@ nano .env
 crontab -e
 
 # self host embedding model
-docker run -d --name bge-m3 -p 8080:80 -v C:\MyAI\data:/data ghcr.io/huggingface/text-embeddings-inference:cpu-1.6 --model-id BAAI/bge-m3
+docker run -d --name bge-m3 -p 8080:80 -v C:\text_embedding_docker\data:/data ghcr.io/huggingface/text-embeddings-inference:cpu-1.6 --model-id BAAI/bge-m3

@@ -92,13 +92,15 @@ onRecordsListRequest(e => {
     e.next();
 }, 'post', 'source')
 
-// Cache invalidation: when a post is assigned a stance, remove it from grouped posts cache
+// Cache invalidation: when a post is assigned a stance or anti_stance, remove it from grouped posts cache
 onRecordUpdate(e => {
+    const cache = require(`${__hooks}/utils.groupedPostsCache.js`);
     const newStance = e.record?.get('stance');
     const oldStance = e.record?.original()?.get('stance');
-    // only invalidate when stance changes from empty to non-empty
-    if (newStance && !oldStance) {
-        const cache = require(`${__hooks}/groupedPostsCache.js`);
+    const newAntiStance = e.record?.get('anti_stance');
+    const oldAntiStance = e.record?.original()?.get('anti_stance');
+    // invalidate when stance or anti_stance changes from empty to non-empty
+    if ((newStance && !oldStance) || (newAntiStance && !oldAntiStance)) {
         cache.removePostFromCache(e.record?.get('id'));
     }
     e.next();
@@ -106,7 +108,7 @@ onRecordUpdate(e => {
 
 // Cache invalidation: when a post is deleted, remove it from grouped posts cache
 onRecordDelete(e => {
-    const cache = require(`${__hooks}/groupedPostsCache.js`);
+    const cache = require(`${__hooks}/utils.groupedPostsCache.js`);
     cache.removePostFromCache(e.record?.get('id'));
     e.next();
 }, 'post')
